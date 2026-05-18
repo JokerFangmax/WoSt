@@ -19,6 +19,10 @@
 #include <utility>
 #include <stdexcept>
 
+#ifdef __AVX512F__
+#include <immintrin.h>
+#endif
+
 namespace wost {
 
 vec3 WoStGeometryBackend::ClosestPtOnTriangle(
@@ -162,6 +166,9 @@ float WoStGeometryBackend::ClosestPoint(const vec3& x, BoundaryPoint& bp) const
 float WoStGeometryBackend::ClosestSilhouette(
         const vec3& x, BoundaryPoint& out) const
 {
+#ifdef __AVX512F__
+    return ClosestSilhouetteSIMD(x, out);
+#else
     float bestD2 = std::numeric_limits<float>::max();
     out.dist = std::numeric_limits<float>::max();
 
@@ -184,7 +191,143 @@ float WoStGeometryBackend::ClosestSilhouette(
         }
     }
     return out.dist;
+#endif
 }
+
+#ifdef __AVX512F__
+// ============================================================================
+// AVX-512 Vectorized ClosestSilhouette
+// Processes 16 edges simultaneously using SIMD intrinsics
+// ============================================================================
+float WoStGeometryBackend::ClosestSilhouetteSIMD(
+        const vec3& x, BoundaryPoint& out) const
+{
+    float bestD2 = std::numeric_limits<float>::max();
+    out.dist = std::numeric_limits<float>::max();
+    uint32_t bestGlobalIdx = ~0u;
+
+    // Broadcast query point components across 16-lane vector registers
+    __m512 px = _mm512_set1_ps(x.x);
+    __m512 py = _mm512_set1_ps(x.y);
+    __m512 pz = _mm512_set1_ps(x.z);
+
+    __m512 bestD2_v = _mm512_set1_ps(std::numeric_limits<float>::max());
+    __m512i bestIdx_v = _mm512_set1_epi32(-1);
+    __m512i laneOffsets = _mm512_setr_epi32(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15);
+
+    size_t n = silhouettes.size();
+    size_t n_rounded = n & ~15; // Process blocks of 16
+
+    for (size_t i = 0; i < n_rounded; i += 16) {
+        // Contiguous unaligned vector loads (safe and zero-overhead on modern CPUs)
+        __m512 v0x = _mm512_loadu_ps(&silhouetteSoA.v0x[i]);
+        __m512 v0y = _mm512_loadu_ps(&silhouetteSoA.v0y[i]);
+        __m512 v0z = _mm512_loadu_ps(&silhouetteSoA.v0z[i]);
+
+        __m512 dx = _mm512_sub_ps(px, v0x);
+        __m512 dy = _mm512_sub_ps(py, v0y);
+        __m512 dz = _mm512_sub_ps(pz, v0z);
+
+        // Compute s0 = dot3(n0, x - v0)
+        __m512 s0 = _mm512_mul_ps(_mm512_loadu_ps(&silhouetteSoA.n0x[i]), dx);
+        s0 = _mm512_fmadd_ps(_mm512_loadu_ps(&silhouetteSoA.n0y[i]), dy, s0);
+        s0 = _mm512_fmadd_ps(_mm512_loadu_ps(&silhouetteSoA.n0z[i]), dz, s0);
+
+        // Compute s1 = dot3(n1, x - v0)
+        __m512 s1 = _mm512_mul_ps(_mm512_loadu_ps(&silhouetteSoA.n1x[i]), dx);
+        s1 = _mm512_fmadd_ps(_mm512_loadu_ps(&silhouetteSoA.n1y[i]), dy, s1);
+        s1 = _mm512_fmadd_ps(_mm512_loadu_ps(&silhouetteSoA.n1z[i]), dz, s1);
+
+        // Silhouette condition check: s0 * s1 < 0
+        __mmask16 isSil = _mm512_cmp_ps_mask(_mm512_mul_ps(s0, s1), _mm512_setzero_ps(), _CMP_LT_OQ);
+        if (isSil == 0) continue; // Skip edge evaluation if no lanes are silhouettes
+
+        // Segment distance math for valid lanes
+        __m512 abx = _mm512_sub_ps(_mm512_loadu_ps(&silhouetteSoA.v1x[i]), v0x);
+        __m512 aby = _mm512_sub_ps(_mm512_loadu_ps(&silhouetteSoA.v1y[i]), v0y);
+        __m512 abz = _mm512_sub_ps(_mm512_loadu_ps(&silhouetteSoA.v1z[i]), v0z);
+
+        __m512 t = _mm512_mul_ps(dx, abx);
+        t = _mm512_fmadd_ps(dy, aby, t);
+        t = _mm512_fmadd_ps(dz, abz, t);
+
+        __m512 d = _mm512_mul_ps(abx, abx);
+        d = _mm512_fmadd_ps(aby, aby, d);
+        d = _mm512_fmadd_ps(abz, abz, d);
+
+        // Safe division check under mask
+        __mmask16 validD = _mm512_cmp_ps_mask(d, _mm512_set1_ps(1e-12f), _CMP_GT_OQ);
+        __m512 safeD = _mm512_mask_blend_ps(~validD, d, _mm512_set1_ps(1.0f));
+        t = _mm512_div_ps(t, safeD);
+        t = _mm512_mask_mov_ps(_mm512_setzero_ps(), ~validD, t);
+
+        // Clamp projection parameter t to [0.0, 1.0]
+        t = _mm512_max_ps(_mm512_setzero_ps(), _mm512_min_ps(_mm512_set1_ps(1.0f), t));
+
+        // Clamped closest points
+        __m512 cpx = _mm512_fmadd_ps(t, abx, v0x);
+        __m512 cpy = _mm512_fmadd_ps(t, aby, v0y);
+        __m512 cpz = _mm512_fmadd_ps(t, abz, v0z);
+
+        // Compute squared distances d2 = dist2(x, cp)
+        __m512 d2 = _mm512_mul_ps(_mm512_sub_ps(px, cpx), _mm512_sub_ps(px, cpx));
+        d2 = _mm512_fmadd_ps(_mm512_sub_ps(py, cpy), _mm512_sub_ps(py, cpy), d2);
+        d2 = _mm512_fmadd_ps(_mm512_sub_ps(pz, cpz), _mm512_sub_ps(pz, cpz), d2);
+
+        // Track and blend minimums
+        __mmask16 newMinMask = _mm512_kand(isSil, _mm512_cmp_ps_mask(d2, bestD2_v, _CMP_LT_OQ));
+        bestD2_v = _mm512_mask_blend_ps(newMinMask, bestD2_v, d2);
+        
+        __m512i currIdx_v = _mm512_add_epi32(_mm512_set1_epi32(i), laneOffsets);
+        bestIdx_v = _mm512_mask_blend_epi32(newMinMask, bestIdx_v, currIdx_v);
+    }
+
+// Horizontal minimum reduction across the register lanes
+    float minD2 = _mm512_reduce_min_ps(bestD2_v);
+    if (minD2 < bestD2) {
+        __mmask16 minLaneMask = _mm512_cmp_ps_mask(bestD2_v, _mm512_set1_ps(minD2), _CMP_EQ_OQ);
+        int lane = __builtin_ctz(minLaneMask); // Find index of setting lane
+        
+        // Safely extract from register using a 64-byte aligned local store
+        alignas(64) int idx_arr[16];
+        _mm512_store_epi32(idx_arr, bestIdx_v);
+        bestGlobalIdx = static_cast<uint32_t>(idx_arr[lane]);
+        
+        bestD2 = minD2;
+    }
+
+    // Remainder loop for trailing edges (when total edge count is not a multiple of 16)
+    for (size_t i = n_rounded; i < n; ++i) {
+        float s0 = silhouetteSoA.n0x[i]*(x.x - silhouetteSoA.v0x[i]) + 
+                   silhouetteSoA.n0y[i]*(x.y - silhouetteSoA.v0y[i]) + 
+                   silhouetteSoA.n0z[i]*(x.z - silhouetteSoA.v0z[i]);
+        float s1 = silhouetteSoA.n1x[i]*(x.x - silhouetteSoA.v0x[i]) + 
+                   silhouetteSoA.n1y[i]*(x.y - silhouetteSoA.v0y[i]) + 
+                   silhouetteSoA.n1z[i]*(x.z - silhouetteSoA.v0z[i]);
+        if (s0 * s1 >= 0.f) continue;
+
+        vec3 cp;
+        float d2 = PointSegDist2(x, {silhouetteSoA.v0x[i], silhouetteSoA.v0y[i], silhouetteSoA.v0z[i]}, 
+                                    {silhouetteSoA.v1x[i], silhouetteSoA.v1y[i], silhouetteSoA.v1z[i]}, cp);
+        if (d2 < bestD2) {
+            bestD2 = d2;
+            bestGlobalIdx = i;
+        }
+    }
+
+    // Scalar Finalization (only extract full vector normals for the single winning edge)
+    if (bestGlobalIdx != ~0u) {
+        const auto& e = silhouettes[bestGlobalIdx];
+        vec3 cp;
+        PointSegDist2(x, e.v0, e.v1, cp);
+        out.position = cp;
+        out.normal   = norm3(add(e.n0, e.n1));
+        out.dist     = std::sqrt(bestD2);
+        out.triIdx   = ~0u;
+    }
+    return out.dist;
+}
+#endif
 
 // ============================================================================
 // (2b) StarRadius  =  min( ClosestPoint, ClosestSilhouette )
@@ -409,6 +552,11 @@ void WoStGeometryBackend::BuildSilhouetteEdges()
         se.n1 = triNormals[t1];
         silhouettes.push_back(se);
     }
+
+    // Build SoA structure for AVX-512 acceleration
+#ifdef __AVX512F__
+    silhouetteSoA.build(silhouettes);
+#endif
 }
 
 // ============================================================================

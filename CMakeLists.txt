@@ -86,6 +86,25 @@ target_compile_options(wost PRIVATE
     -ffast-math
 )
 
+# AVX-512 specific flags (only if compiler supports it)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    # Check if AVX-512 is supported by the CPU
+    include(CheckCXXSourceCompiles)
+    set(CMAKE_REQUIRED_FLAGS "-mavx512f")
+    check_cxx_source_compiles("
+        #include <immintrin.h>
+        int main() { __m512 v = _mm512_setzero_ps(); return 0; }
+    " HAS_AVX512)
+    unset(CMAKE_REQUIRED_FLAGS)
+    
+    if(HAS_AVX512)
+        message(STATUS "AVX-512 support detected - enabling AVX-512 optimizations")
+        target_compile_options(wost PRIVATE -mavx512f -mavx512dq)
+    else()
+        message(STATUS "AVX-512 not supported by this CPU - using scalar fallback")
+    endif()
+endif()
+
 # ============================================================================
 # OpenMP include dirs
 # ============================================================================

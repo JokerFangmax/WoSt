@@ -5,6 +5,10 @@
 #include <string>
 #include <vector>
 
+#ifdef __AVX512F__
+#include <immintrin.h>
+#endif
+
 namespace wost {
 
 // ===========================================================================
@@ -71,6 +75,29 @@ public:
     }
 
 private:
+    // --- AVX-512 SoA silhouette data ----------------------------------------
+    struct SilhouetteSoA {
+        std::vector<float> v0x, v0y, v0z;
+        std::vector<float> v1x, v1y, v1z;
+        std::vector<float> n0x, n0y, n0z;
+        std::vector<float> n1x, n1y, n1z;
+
+        void build(const std::vector<SilhouetteEdge>& silhouettes) {
+            size_t n = silhouettes.size();
+            v0x.resize(n); v0y.resize(n); v0z.resize(n);
+            v1x.resize(n); v1y.resize(n); v1z.resize(n);
+            n0x.resize(n); n0y.resize(n); n0z.resize(n);
+            n1x.resize(n); n1y.resize(n); n1z.resize(n);
+            
+            for (size_t i = 0; i < n; ++i) {
+                v0x[i] = silhouettes[i].v0.x; v0y[i] = silhouettes[i].v0.y; v0z[i] = silhouettes[i].v0.z;
+                v1x[i] = silhouettes[i].v1.x; v1y[i] = silhouettes[i].v1.y; v1z[i] = silhouettes[i].v1.z;
+                n0x[i] = silhouettes[i].n0.x; n0y[i] = silhouettes[i].n0.y; n0z[i] = silhouettes[i].n0.z;
+                n1x[i] = silhouettes[i].n1.x; n1y[i] = silhouettes[i].n1.y; n1z[i] = silhouettes[i].n1.z;
+            }
+        }
+    };
+    SilhouetteSoA silhouetteSoA;
     // --- geometry primitives ------------------------------------------------
     static vec3  ClosestPtOnTriangle(const vec3& p,
                                      const vec3& a, const vec3& b, const vec3& c);
@@ -81,6 +108,9 @@ private:
     // --- BVH traversals -----------------------------------------------------
     float ClosestPointBVH   (const vec3& x, BoundaryPoint& out) const;
     float ClosestSilhouette (const vec3& x, BoundaryPoint& out) const;
+#ifdef __AVX512F__
+    float ClosestSilhouetteSIMD(const vec3& x, BoundaryPoint& out) const;
+#endif
     // --- build-time helpers -------------------------------------------------
     void LoadOBJ              (const std::string& path);
     void ComputeNormals       ();
