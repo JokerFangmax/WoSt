@@ -11,21 +11,11 @@
 //   The MC estimate at each grid point is compared to the exact value.
 //   Expected: |error| ~ std_err (Monte Carlo noise only, no bias).
 //
-// ── Test 2: Physical heat problem ───────────────────────────────────────────
-//   PDE:   Δu  = 0              (steady-state heat, no volumetric source)
-//   BC:    u   = 1  on inner sphere  (hot inclusion)
-//          u   = 0  on outer cube    (cold walls)
-//   This is a pure Laplace problem with a physically intuitive solution:
-//   temperature field between a hot sphere and cold box.
-//
 // Output:
 //   test1_manufactured.vtk   – structured grid, includes exact & abs_error
-//   test2_heat_laplace.vtk   – structured grid
 //   test1_pointcloud.vtk     – unstructured point cloud for test 1
 // =============================================================================
 
-// NOTE: TINYBVH_IMPLEMENTATION is already defined in WoStGeometryBackend.cpp.
-//       Do NOT redefine it here.
 #include "src/tiny_bvh.h"
 #include "src/WoStGeometryBackend.hpp"
 #include "src/CubeOuterBoundary.hpp"
@@ -57,8 +47,12 @@ int main(){
     WoStGeometryBackend interior(objfile);
     CubeOuterBoundary exterior(-L, L);
     WoStKernel kernel(interior, exterior);
-
-    Random rnd;
+    
+    // Set OpenMP thread count to number of physical cores
+    #ifdef _OPENMP
+    int num_threads = omp_get_max_threads();
+    printf("OpenMP threads: %d\n", num_threads);
+    #endif
 
     // =========================================================================
     // Test 1: Manufactured solution (quantitative verification)
@@ -83,37 +77,59 @@ int main(){
             return 6.0f;
         };
         
-        std::vector<PointSolution> pointcloud;
-        
         WoStParams params;
-        params.numSamples = numSamples;
+        params.numSamples = 1024;
         params.maxSteps = 512;
         params.eps = 1e-4f;
         
         auto start_time = std::chrono::high_resolution_clock::now();
         
-        // Solve on structured grid
+        // Solve on structured grid with optimized OpenMP parallelization
         int valid_count = 0;
-        #pragma omp parallel for
-        for (uint32_t idx = 0; idx < numSamples; ++idx) {
-
-            float x = rnd.randDouble(-L, L);
-            float y = rnd.randDouble(-L, L);
-            float z = rnd.randDouble(-L, L);    
-            vec3 point = {x, y, z};
-                    
-            if (kernel.InDomain(point)) {
-                WalkResult result = kernel.SolvePoisson(point, g_inner, g_outer, f, params);
-                PointSolution ps;
-                ps.pos = point;
-                ps.value = result.value;
-                ps.stdErr = result.stdErr;
-                ps.meanSteps = result.meanSteps;
-                ps.exact = dot3(point, point);
-                pointcloud.push_back(ps);
+        std::vector<PointSolution> pointcloud;
+        pointcloud.reserve(numSamples);  // Pre-allocate to avoid reallocation
+        
+        #pragma omp parallel
+        {
+            // Thread-local random number generator to avoid contention
+            #ifdef _OPENMP
+            Random thread_rng(omp_get_thread_num() + static_cast<int>(time(nullptr)));
+            #else
+            Random thread_rng;
+            #endif
+            
+            // Thread-local storage for results to minimize synchronization
+            std::vector<PointSolution> local_results;
+            #ifdef _OPENMP
+            local_results.reserve(numSamples / omp_get_num_threads() + 1);
+            #endif
+            
+            #pragma omp for schedule(dynamic, 64) nowait
+            for (uint32_t idx = 0; idx < numSamples; ++idx) {
+                float x = thread_rng.randDouble(-L, L);
+                float y = thread_rng.randDouble(-L, L);
+                float z = thread_rng.randDouble(-L, L);    
+                vec3 point = {x, y, z};
                         
-                valid_count++;
-
+                if (kernel.InDomain(point)) {
+                    WalkResult result = kernel.SolvePoisson(point, g_inner, g_outer, f, params);
+                    PointSolution ps;
+                    ps.pos = point;
+                    ps.value = result.value;
+                    ps.stdErr = result.stdErr;
+                    ps.meanSteps = result.meanSteps;
+                    ps.exact = dot3(point, point);
+                    local_results.push_back(ps);
+                }
+            }
+            
+            // Merge thread-local results (minimize critical section)
+            #pragma omp critical
+            {
+                pointcloud.insert(pointcloud.end(), 
+                                 std::make_move_iterator(local_results.begin()),
+                                 std::make_move_iterator(local_results.end()));
+                valid_count += local_results.size();
             }
         }
         

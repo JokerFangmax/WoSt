@@ -1,6 +1,5 @@
 #include "WoStKernel.hpp"
 #include <algorithm>
-#include <cmath>
 
 namespace wost {
 
