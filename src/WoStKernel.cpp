@@ -35,17 +35,16 @@ BoundaryPoint WoStKernel::makeCubeBP(const vec3& origin,
 // ===========================================================================
 // (1) SolveLaplace
 // ===========================================================================
-WalkResult WoStKernel::SolveLaplace(const vec3&        x0,
+WalkResult WoStKernel::SolveLaplace(const vec3& x0,
                                              const DirichletFn& g_inner,
                                              const DirichletFn& g_outer,
                                              const WoStParams&  params) const
 {
     WalkResult result;
     double sumV = 0.0, sumV2 = 0.0;
-    int    sumSteps = 0;
-
+    int sumSteps = 0;
+    Random rng;
     for (int s = 0; s < params.numSamples; ++s) {
-        Random rng;          // seeded from std::random_device each walk
 
         vec3  x    = x0;
         float acc  = 0.f;
@@ -65,10 +64,11 @@ WalkResult WoStKernel::SolveLaplace(const vec3&        x0,
             float R            = std::min(R_inner, R_outer);
             bool  outerCloser  = (R_outer <= R_inner);
 
-            // ── Absorption shell ─────────────────────────────────────────
-            //   x is within ε of some boundary → read the appropriate BC.
-            if (R < params.eps) {
-                acc += outerCloser ? g_outer(bndBP_outer) : g_inner(bndBP_inner);
+            // Corrected check: Only absorb if close to an actual boundary
+            float distToActualBoundary = outerCloser ? bndBP_outer.dist : bndBP_inner.dist; 
+            if (distToActualBoundary < params.eps) {
+                if (outerCloser) acc += g_outer(bndBP_outer);
+                else acc += g_inner(bndBP_inner);
                 done = true;
                 break;
             }
@@ -132,10 +132,9 @@ WalkResult WoStKernel::SolvePoisson(const vec3&        x0,
 {
     WalkResult result;
     double sumV = 0.0, sumV2 = 0.0;
-    int    sumSteps = 0;
-
+    int sumSteps = 0;
+    Random rng;
     for (int s = 0; s < params.numSamples; ++s) {
-        Random rng;
 
         vec3  x    = x0;
         float acc  = 0.f;
@@ -155,12 +154,11 @@ WalkResult WoStKernel::SolvePoisson(const vec3&        x0,
             float R           = std::min(R_inner, R_outer);
             bool  outerCloser = (R_outer <= R_inner);
 
-            // ── Absorption shell ─────────────────────────────────────────
-            if (R < params.eps) {
-                // Add source correction for this tiny terminal ball.
-                // (R² → very small, safely negligible, but kept for correctness)
-                acc -= (R * R / 6.f) * f(x);
-                acc += outerCloser ? g_outer(bndBP_outer) : g_inner(bndBP_inner);
+            // Corrected check: Only absorb if close to an actual boundary
+            float distToActualBoundary = outerCloser ? bndBP_outer.dist : bndBP_inner.dist; 
+            if (distToActualBoundary < params.eps) {
+                if (outerCloser) acc += g_outer(bndBP_outer);
+                else acc += g_inner(bndBP_inner);
                 done = true;
                 break;
             }

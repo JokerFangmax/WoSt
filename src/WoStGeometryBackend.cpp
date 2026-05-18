@@ -270,9 +270,9 @@ bool WoStGeometryBackend::IsInside(const vec3& x) const
 
         ++crossings;
         // Advance origin past this hit
-        origin.x += ray.hit.t * RAY_DIR.x + offset;
-        origin.y += ray.hit.t * RAY_DIR.y + offset;
-        origin.z += ray.hit.t * RAY_DIR.z + offset;
+        origin.x += (ray.hit.t + offset) * RAY_DIR.x;
+        origin.y += (ray.hit.t + offset) * RAY_DIR.y;
+        origin.z += (ray.hit.t + offset) * RAY_DIR.z;
     }
     return (crossings & 1) != 0;   // odd crossing count → inside
 }

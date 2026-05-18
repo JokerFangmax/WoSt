@@ -41,8 +41,8 @@ using namespace wost;
 
 int main(){
     std::string objfile = "./spot/spot_triangulated.obj";
-    unsigned int numSamples = 1000;
-    float L = 10.0f;
+    unsigned int numSamples = 100000;
+    float L = 1.0f;
 
     WoStGeometryBackend interior(objfile);
     CubeOuterBoundary exterior(-L, L);
@@ -50,7 +50,7 @@ int main(){
     
     // Set OpenMP thread count to number of physical cores
     #ifdef _OPENMP
-    int num_threads = omp_get_max_threads();
+    int num_threads = 32;
     printf("OpenMP threads: %d\n", num_threads);
     #endif
 
@@ -65,7 +65,7 @@ int main(){
         
 
         auto g_inner = [](const BoundaryPoint& bp) -> float {
-            return dot3(bp.position, bp.position);
+            return dot3(bp.position, bp.position) + 10.0f;
         };
         auto g_outer = [](const BoundaryPoint& bp) -> float {
             return dot3(bp.position, bp.position);
@@ -78,7 +78,7 @@ int main(){
         };
         
         WoStParams params;
-        params.numSamples = 1024;
+        params.numSamples = 256;
         params.maxSteps = 512;
         params.eps = 1e-4f;
         

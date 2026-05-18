@@ -8,16 +8,11 @@ project(WoSt)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# ============================================================================
-# TBB
-# ============================================================================
 
 set(CMAKE_PREFIX_PATH
-    "/opt/intel/oneapi/tbb/2022.3"
     ${CMAKE_PREFIX_PATH}
 )
 
-find_package(TBB REQUIRED CONFIG)
 find_package(Threads REQUIRED)
 
 # ============================================================================
@@ -81,6 +76,9 @@ add_executable(wost ${SOURCES})
 # ============================================================================
 
 target_compile_options(wost PRIVATE
+    -fopenmp
+    -march=native 
+    -mtune=native
     -O3
     -Wall
     -Wextra
@@ -102,7 +100,6 @@ target_include_directories(wost PRIVATE
 
 target_link_libraries(wost
     PRIVATE
-    TBB::tbb
     Threads::Threads
     OpenMP::OpenMP_CXX
 )
