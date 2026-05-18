@@ -1,59 +1,11 @@
-// ============================================================================
-// WoStGeometryBackend.hpp
-//
-// Geometry backend for Walk on Stars (WoSt) – a Monte Carlo PDE solver.
-//
-// Reference: "Walk on Stars: A Grid-Free Monte Carlo Method for PDEs
-//             with Neumann Boundary Conditions"
-//             Sawhney, Seyb, Jarosz, Crane – SIGGRAPH 2023.
-//
-// WoSt needs exactly four geometric queries from the scene:
-//
-//   (1)  ClosestPoint(x)     nearest point on ∂Ω; gives sphere radius for WoS
-//   (2)  StarRadius(x)       radius of the largest *star-shaped* ball at x
-//                            = min(dist to ∂Ω,  dist to nearest silhouette)
-//                            This is the key WoSt ingredient.
-//   (3)  IntersectRay(…)     segment vs ∂Ω; used to sample on-boundary points
-//   (4)  IsInside(x)         inside/outside test for domain Ω
-//
-// Dependency: tiny_bvh (single-header, MIT).
-// Define TINYBVH_IMPLEMENTATION in exactly one translation unit before
-// including tiny_bvh.h.
-// ============================================================================
-#pragma once
+#ifndef WOST_GEOMETRY_BACKEND_HPP
+#define WOST_GEOMETRY_BACKEND_HPP
 
-#include "tiny_bvh.h"
+#include "utils.hpp"
 #include <string>
 #include <vector>
 
 namespace wost {
-
-using vec3 = tinybvh::bvhvec3;
-using vec4 = tinybvh::bvhvec4;
-
-// ---------------------------------------------------------------------------
-// BoundaryPoint – result of closest-point / ray-hit queries
-// ---------------------------------------------------------------------------
-struct BoundaryPoint {
-    vec3     position;        // point on ∂Ω
-    vec3     normal;          // outward unit normal
-    float    dist   = 0.f;   // distance from the query point x
-    uint32_t triIdx = ~0u;   // flat triangle index (vertex = triangles[triIdx*3+k])
-};
-
-// ---------------------------------------------------------------------------
-// SilhouetteEdge – precomputed for the mesh topology
-//
-// An edge shared by two triangles with outward normals n0, n1.
-// From query point x the edge is a silhouette when the signs of
-//   dot(n0, x - v0)  and  dot(n1, x - v0)
-// differ, i.e. one face points toward x and the other points away.
-// The WoSt star radius is min(closest-boundary, closest-silhouette).
-// ---------------------------------------------------------------------------
-struct SilhouetteEdge {
-    vec3 v0, v1;   // endpoints
-    vec3 n0, n1;   // face normals of the two adjacent triangles
-};
 
 // ===========================================================================
 // WoStGeometryBackend
@@ -147,3 +99,5 @@ private:
 };
 
 } // namespace wost
+
+#endif

@@ -14,40 +14,13 @@
 #include <cstring>
 #include <fstream>
 #include <sstream>
-#include <stack>
 #include <map>
 #include <array>
 #include <utility>
 #include <stdexcept>
-#include <cstdio>
 
 namespace wost {
 
-// ============================================================================
-// Internal math aliases (avoid repeating the tinybvh_ prefix everywhere)
-// ============================================================================
-static inline float  dot3  (const vec3& a, const vec3& b) { return tinybvh::tinybvh_dot(a, b); }
-static inline float  len3  (const vec3& a)                { return tinybvh::tinybvh_length(a); }
-static inline vec3   norm3 (const vec3& a)                { return tinybvh::tinybvh_normalize(a); }
-static inline vec3   cross3(const vec3& a, const vec3& b) { return tinybvh::tinybvh_cross(a, b); }
-
-static inline vec3 sub(const vec3& a, const vec3& b) {
-    return { a.x - b.x, a.y - b.y, a.z - b.z };
-}
-static inline vec3 add(const vec3& a, const vec3& b) {
-    return { a.x + b.x, a.y + b.y, a.z + b.z };
-}
-static inline vec3 scale(const vec3& a, float s) {
-    return { a.x * s, a.y * s, a.z * s };
-}
-static inline float dist2(const vec3& a, const vec3& b) {
-    vec3 d = sub(a, b);
-    return dot3(d, d);
-}
-
-// ============================================================================
-// (A) Closest point on a triangle – Ericson §5.1.5
-// ============================================================================
 vec3 WoStGeometryBackend::ClosestPtOnTriangle(
         const vec3& p,
         const vec3& a, const vec3& b, const vec3& c)
@@ -91,10 +64,7 @@ vec3 WoStGeometryBackend::ClosestPtOnTriangle(
     return add(a, add(scale(ab, v), scale(ac, w)));
 }
 
-// ============================================================================
-// (B) Squared distance from a point to an AABB
-//     Used to prune BVH nodes during closest-point traversal.
-// ============================================================================
+
 float WoStGeometryBackend::PointAABBDist2(
         const vec3& p, const vec3& bmin, const vec3& bmax)
 {
@@ -122,12 +92,7 @@ float WoStGeometryBackend::PointSegDist2(
     return dist2(p, closest);
 }
 
-// ============================================================================
-// (1) Closest point on ∂Ω  –  BVH traversal
-//
-// We traverse the BVH with a stack, pruning any node whose minimum possible
-// distance to x (= distance to its AABB) exceeds the running best.
-// ============================================================================
+
 
 float WoStGeometryBackend::ClosestPointBVH(
         const vec3& x, BoundaryPoint& out) const
@@ -194,16 +159,6 @@ float WoStGeometryBackend::ClosestPoint(const vec3& x, BoundaryPoint& bp) const
     return ClosestPointBVH(x, bp);
 }
 
-// ============================================================================
-// (2a) Closest silhouette edge from x  –  linear scan
-//
-// An edge (v0, v1) with face normals n0, n1 is a *silhouette* from x when
-//   sign( dot(n0, x - v0) )  !=  sign( dot(n1, x - v0) )
-// For every such edge we compute the closest point on the segment and keep
-// the minimum.
-//
-// Complexity: O(E).  For very large meshes build a BVH over edges too.
-// ============================================================================
 float WoStGeometryBackend::ClosestSilhouette(
         const vec3& x, BoundaryPoint& out) const
 {

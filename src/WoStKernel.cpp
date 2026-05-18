@@ -1,278 +1,52 @@
-// ============================================================================
-// WoStKernel.cpp
-//
-// Implementation of the Walk on Stars Monte Carlo PDE kernel.
-// See WoStKernel.hpp for the mathematical background.
-// ============================================================================
-
 #include "WoStKernel.hpp"
-
-#include <cmath>
-#include <cassert>
-#include <limits>
 #include <algorithm>
+#include <cmath>
 
 namespace wost {
 
 // ---------------------------------------------------------------------------
-// Local math helpers (keep these file-local; the backend has its own copies)
+// Constructor
 // ---------------------------------------------------------------------------
-namespace {
+WoStKernel::WoStKernel(const WoStGeometryBackend& inner, const CubeOuterBoundary& outer)
+    : inner_(inner), outer_(outer) {}
 
-inline float dot3(const vec3& a, const vec3& b) noexcept {
-    return a.x * b.x + a.y * b.y + a.z * b.z;
-}
-inline vec3 scale3(const vec3& a, float s) noexcept {
-    return { a.x * s, a.y * s, a.z * s };
-}
-// x + s * d
-inline vec3 madd(const vec3& x, const vec3& d, float s) noexcept {
-    return { x.x + d.x * s, x.y + d.y * s, x.z + d.z * s };
-}
-// reflect incident direction `d` about outward normal `n`
-inline vec3 reflect(const vec3& d, const vec3& n) noexcept {
-    float dn = dot3(d, n);
-    return { d.x - 2.f * dn * n.x,
-             d.y - 2.f * dn * n.y,
-             d.z - 2.f * dn * n.z };
+// ---------------------------------------------------------------------------
+// Domain predicate
+// ---------------------------------------------------------------------------
+bool WoStKernel::InDomain(const vec3& x) const {
+    return outer_.IsInside(x) && !inner_.IsInside(x);
 }
 
-// -----------------------------------------------------------------------
-// Assemble a BoundaryPoint from a successful IntersectRay result.
-// -----------------------------------------------------------------------
-inline BoundaryPoint makeBP(const vec3& origin, const vec3& dir,
-                             float t, const vec3& normal, uint32_t prim) {
+// ---------------------------------------------------------------------------
+// Helper – make a BoundaryPoint for an outer-cube hit (no triangle)
+// ---------------------------------------------------------------------------
+BoundaryPoint WoStKernel::makeCubeBP(const vec3& origin,
+                                              const vec3& dir,
+                                              float       t,
+                                              const vec3& normal)
+{
     BoundaryPoint bp;
     bp.position = madd(origin, dir, t);
     bp.normal   = normal;
     bp.dist     = t;
-    bp.triIdx   = prim;
+    bp.triIdx   = ~0u;   // no triangle
     return bp;
 }
 
-// -----------------------------------------------------------------------
-// Finalise statistics from accumulated sums.
-// -----------------------------------------------------------------------
-inline void finalise(WalkResult& r, double sumV, double sumV2,
-                     int sumSteps, int N) {
-    r.value     = static_cast<float>(sumV / N);
-    r.meanSteps = static_cast<float>(sumSteps) / static_cast<float>(N);
-
-    double mean  = sumV / N;
-    double var   = std::max(0.0, sumV2 / N - mean * mean);
-    double sigma = std::sqrt(var);                     // population std-dev
-    r.stdErr     = static_cast<float>(sigma / std::sqrt(static_cast<double>(N)));
-}
-
-} // anonymous namespace
-
 // ===========================================================================
-// WoStKernel constructor
-// ===========================================================================
-WoStKernel::WoStKernel(const WoStGeometryBackend& geo) : geo_(geo) {}
-
-// ===========================================================================
-// Internal walk-step dispatcher
-//
-// The three public solvers share the same stepping loop; they differ only in
-// what they do when the walk hits a boundary or crosses the epsilon shell.
-// We inline the logic directly into each solver to keep the hot path clear.
-// ===========================================================================
-
-
-// ===========================================================================
-// (1) SolveLaplace  –  Δu = 0,  pure Dirichlet
-//
-// Walk until the walk exits Ω or the star radius falls below eps.
-// No source accumulation needed.
+// (1) SolveLaplace
 // ===========================================================================
 WalkResult WoStKernel::SolveLaplace(const vec3&        x0,
-                                     const DirichletFn& g,
-                                     const WoStParams&  params) const
+                                             const DirichletFn& g_inner,
+                                             const DirichletFn& g_outer,
+                                             const WoStParams&  params) const
 {
     WalkResult result;
     double sumV = 0.0, sumV2 = 0.0;
     int    sumSteps = 0;
 
     for (int s = 0; s < params.numSamples; ++s) {
-        // Per-sample stream: combine base seed with sample index so each
-        // walk is independently seeded (no correlation between samples).
-        PCG32 rng(params.seed, static_cast<uint64_t>(s));
-
-        vec3  x    = x0;
-        float val  = 0.f;
-        int   steps = 0;
-        bool  done  = false;
-
-        for (int step = 0; step < params.maxSteps; ++step) {
-            ++steps;
-
-            // ── Query geometry ───────────────────────────────────────────
-            BoundaryPoint bndBP, silBP;
-            float R = geo_.StarRadius(x, bndBP, silBP);
-
-            // ── Absorption shell ─────────────────────────────────────────
-            //   If the star ball is tiny we are essentially on ∂Ω.
-            //   Use the closest Dirichlet boundary point as the terminus.
-            if (R < params.eps) {
-                val  = g(bndBP);
-                done = true;
-                break;
-            }
-
-            // ── Sample a point on S(x, R) ────────────────────────────────
-            vec3 dir = sampleUnitSphere(rng);
-
-            // ── Ray-trace up to star radius R ────────────────────────────
-            float t;
-            vec3 hitN;
-            uint32_t prim;
-            bool hit = geo_.IntersectRay(x, dir, R, t, hitN, prim);
-
-            if (hit) {
-                // We hit the boundary before reaching R
-                val = g(makeBP(x, dir, t, hitN, prim));
-                done = true;
-                break;
-            } else {
-                // Free path - no boundary intersected, take full step
-                x = madd(x, dir, R); 
-            }
-        } // walk steps
-
-        if (!done) {
-            // maxSteps reached: use closest boundary as best estimate
-            BoundaryPoint bp;
-            geo_.ClosestPoint(x, bp);
-            val               = g(bp);
-            result.anyDiverged = true;
-        }
-
-        sumV  += val;
-        sumV2 += static_cast<double>(val) * val;
-        sumSteps += steps;
-    }
-
-    finalise(result, sumV, sumV2, sumSteps, params.numSamples);
-    return result;
-}
-
-// ===========================================================================
-// (2) SolvePoisson  –  Δu = f,  pure Dirichlet
-//
-// At each walk step, accumulate the volume source contribution via the
-// 3-D mean-value formula:
-//
-//   u(x) = E[u(y)] − (R²/6) · f(x)   (on sphere of radius R, in 3D)
-//
-// So the *path estimator* accumulates:
-//   value ← g(y_terminal)  +  Σ_k [ −(R_k²/6) · f(x_k) ]
-//
-// This is exact for constant f; higher-order corrections vanish for
-// slowly varying f under refinement.
-// ===========================================================================
-WalkResult WoStKernel::SolvePoisson(const vec3&        x0,
-                                     const DirichletFn& g,
-                                     const SourceFn&    f,
-                                     const WoStParams&  params) const
-{
-    WalkResult result;
-    double sumV = 0.0, sumV2 = 0.0;
-    int    sumSteps = 0;
-
-    for (int s = 0; s < params.numSamples; ++s) {
-        PCG32 rng(params.seed, static_cast<uint64_t>(s));
-
-        vec3  x    = x0;
-        float acc  = 0.f;  // accumulated walk value
-        int   steps = 0;
-        bool  done  = false;
-
-        for (int step = 0; step < params.maxSteps; ++step) {
-            ++steps;
-
-            BoundaryPoint bndBP, silBP;
-            float R = geo_.StarRadius(x, bndBP, silBP);
-
-            // ── Absorption shell ─────────────────────────────────────────
-            if (R < params.eps) {
-                acc += g(bndBP);
-                done = true;
-                break;
-            }
-
-            // ── Walk step ────────────────────────────────────────────────
-            vec3 dir = sampleUnitSphere(rng);
-
-            // Ray-trace up to star radius R
-            float t;
-            vec3 hitN;
-            uint32_t prim;
-            bool hit = geo_.IntersectRay(x, dir, R, t, hitN, prim);
-
-            // If we hit, the step length is t. Otherwise, it's R.
-            float stepDist = hit ? t : R;
-
-            // Correct star-shaped mean-value estimator for 3D
-            acc -= (stepDist * stepDist / 6.f) * f(x);
-
-            if (hit) {
-                // We hit the boundary before reaching R
-                acc += g(makeBP(x, dir, t, hitN, prim));
-                done = true;
-                break;
-            } else {
-                // Free path - no boundary intersected, take full step
-                x = madd(x, dir, R);
-            }
-        }
-
-        if (!done) {
-            BoundaryPoint bp;
-            geo_.ClosestPoint(x, bp);
-            acc               += g(bp);
-            result.anyDiverged = true;
-        }
-
-        sumV  += acc;
-        sumV2 += static_cast<double>(acc) * acc;
-        sumSteps += steps;
-    }
-
-    finalise(result, sumV, sumV2, sumSteps, params.numSamples);
-    return result;
-}
-
-// ===========================================================================
-// (3) SolveMixed  –  Δu = 0,  mixed Dirichlet / Neumann BCs
-//
-// Boundary behaviour at a hit point p:
-//
-//   Dirichlet (isNeumann(p) == false):
-//       Accumulate g(p), terminate.  Same as pure-Dirichlet kernel.
-//
-//   Neumann   (isNeumann(p) == true):
-//       Accumulate contribution  h(p) · t  where t is the distance
-//       travelled to the boundary (= the "last free-path length").
-//       This weights h by the same harmonic measure that WoSt assigns to
-//       the Neumann term (Sawhney et al. 2023, §4).
-//       Then reflect the walk direction about the outward normal and
-//       restart from just inside the reflection point.
-//
-// Walk terminates when it hits a Dirichlet boundary or exhausts maxSteps.
-// ===========================================================================
-WalkResult WoStKernel::SolveMixed(const vec3&           x0,
-                                   const DirichletFn&    g,
-                                   const NeumannFn&      h,
-                                   const NeumannPredFn&  isNeumann,
-                                   const WoStParams&     params) const
-{
-    WalkResult result;
-    double sumV = 0.0, sumV2 = 0.0;
-    int    sumSteps = 0;
-
-    for (int s = 0; s < params.numSamples; ++s) {
-        PCG32 rng(params.seed, static_cast<uint64_t>(s));
+        Random rng;          // seeded from std::random_device each walk
 
         vec3  x    = x0;
         float acc  = 0.f;
@@ -282,71 +56,151 @@ WalkResult WoStKernel::SolveMixed(const vec3&           x0,
         for (int step = 0; step < params.maxSteps; ++step) {
             ++steps;
 
-            BoundaryPoint bndBP, silBP;
-            float R = geo_.StarRadius(x, bndBP, silBP);
+            // ── Dual star radius ────────────────────────────────────────
+            BoundaryPoint bndBP_inner, silBP_inner;
+            float R_inner = inner_.StarRadius(x, bndBP_inner, silBP_inner);
+
+            BoundaryPoint bndBP_outer;
+            float R_outer = outer_.StarRadius(x, bndBP_outer);
+
+            float R            = std::min(R_inner, R_outer);
+            bool  outerCloser  = (R_outer <= R_inner);
 
             // ── Absorption shell ─────────────────────────────────────────
+            //   x is within ε of some boundary → read the appropriate BC.
             if (R < params.eps) {
-                if (isNeumann(bndBP)) {
-                    // On ΓN: accumulate Neumann term and reflect inward
-                    acc += h(bndBP) * R;
-                    // Sample a direction in the inward hemisphere
-                    vec3 n = bndBP.normal;
-                    vec3 d = sampleUnitSphere(rng);
-                    if (dot3(d, n) > 0.f) d = scale3(d, -1.f);  // flip outward
-                    x = madd(bndBP.position, d, params.eps * 2.f);
-                    continue;  // restart walk from just inside ΓN
-                } else {
-                    // On ΓD: terminate
-                    acc += g(bndBP);
-                    done = true;
-                    break;
-                }
+                acc += outerCloser ? g_outer(bndBP_outer) : g_inner(bndBP_inner);
+                done = true;
+                break;
             }
 
-            // ── Walk step ────────────────────────────────────────────────
+            // ── Random walk step ─────────────────────────────────────────
+            //   Sample a direction; ray-test only the inner mesh.
+            //   Reason: the ball B(x, R) with R ≤ R_outer always fits inside
+            //   the convex cube, so no step of length R can exit the cube.
             vec3 dir = sampleUnitSphere(rng);
 
-            // Ray-trace up to star radius R
-            float t;
-            vec3 hitN;
-            uint32_t prim;
-            bool hit = geo_.IntersectRay(x, dir, R, t, hitN, prim);
+            float    t_inner;
+            vec3     n_inner;
+            uint32_t prim_inner;
+            bool hit = inner_.IntersectRay(x, dir, R, t_inner, n_inner, prim_inner);
 
             if (hit) {
-                // We hit the boundary before reaching R
-                BoundaryPoint bp = makeBP(x, dir, t, hitN, prim);
-
-                if (isNeumann(bp)) {
-                    // ── Neumann: accumulate + reflect ────────────────────
-                    acc += h(bp) * t;
-
-                    // Reflect direction about outward normal
-                    vec3 n    = bp.normal;
-                    vec3 refl = reflect(dir, n);
-                    // Restart from just past the reflection point (inward side)
-                    x = madd(bp.position, refl, params.eps * 2.f);
-                } else {
-                    // ── Dirichlet: accumulate + terminate ────────────────
-                    acc += g(bp);
-                    done = true;
-                    break;
-                }
+                // Boundary hit before reaching R → apply inner Dirichlet BC.
+                acc += g_inner(makeBP(x, dir, t_inner, n_inner, prim_inner));
+                done = true;
+                break;
             } else {
-                // Free path - no boundary intersected, take full step
+                // Free path: advance to sphere surface S(x, R).
                 x = madd(x, dir, R);
             }
         } // walk steps
 
         if (!done) {
-            BoundaryPoint bp;
-            geo_.ClosestPoint(x, bp);
-            if (!isNeumann(bp)) acc += g(bp);
+            // Safety fallback: walk hit maxSteps; use nearest boundary.
+            BoundaryPoint bp_i, bp_o;
+            float d_i = inner_.ClosestPoint(x, bp_i);
+            float d_o = outer_.ClosestPoint(x, bp_o);
+            acc += (d_o <= d_i) ? g_outer(bp_o) : g_inner(bp_i);
             result.anyDiverged = true;
         }
 
-        sumV  += acc;
-        sumV2 += static_cast<double>(acc) * acc;
+        sumV     += acc;
+        sumV2    += static_cast<double>(acc) * acc;
+        sumSteps += steps;
+    }
+
+    finalise(result, sumV, sumV2, sumSteps, params.numSamples);
+    return result;
+}
+
+// ===========================================================================
+// (2) SolvePoisson
+//
+// Walk accumulator:
+//   acc  +=  g(hit point)                     [boundary contribution]
+//   acc  -=  (stepLen² / 6) * f(x)            [volume source, 3-D formula]
+//
+// 'stepLen' is the actual step taken (t_inner if boundary was hit, else R).
+// Using the actual step length rather than the full R is more accurate when
+// R was limited by silhouettes rather than the boundary distance itself.
+// ===========================================================================
+WalkResult WoStKernel::SolvePoisson(const vec3&        x0,
+                                              const DirichletFn& g_inner,
+                                              const DirichletFn& g_outer,
+                                              const SourceFn&    f,
+                                              const WoStParams&  params) const
+{
+    WalkResult result;
+    double sumV = 0.0, sumV2 = 0.0;
+    int    sumSteps = 0;
+
+    for (int s = 0; s < params.numSamples; ++s) {
+        Random rng;
+
+        vec3  x    = x0;
+        float acc  = 0.f;
+        int   steps = 0;
+        bool  done  = false;
+
+        for (int step = 0; step < params.maxSteps; ++step) {
+            ++steps;
+
+            // ── Dual star radius ────────────────────────────────────────
+            BoundaryPoint bndBP_inner, silBP_inner;
+            float R_inner = inner_.StarRadius(x, bndBP_inner, silBP_inner);
+
+            BoundaryPoint bndBP_outer;
+            float R_outer = outer_.StarRadius(x, bndBP_outer);
+
+            float R           = std::min(R_inner, R_outer);
+            bool  outerCloser = (R_outer <= R_inner);
+
+            // ── Absorption shell ─────────────────────────────────────────
+            if (R < params.eps) {
+                // Add source correction for this tiny terminal ball.
+                // (R² → very small, safely negligible, but kept for correctness)
+                acc -= (R * R / 6.f) * f(x);
+                acc += outerCloser ? g_outer(bndBP_outer) : g_inner(bndBP_inner);
+                done = true;
+                break;
+            }
+
+            // ── Random walk step ─────────────────────────────────────────
+            vec3 dir = sampleUnitSphere(rng);
+
+            float    t_inner;
+            vec3     n_inner;
+            uint32_t prim_inner;
+            bool hit = inner_.IntersectRay(x, dir, R, t_inner, n_inner, prim_inner);
+
+            // Effective step length (≤ R).
+            float stepLen = hit ? t_inner : R;
+
+            // ── Poisson source contribution ──────────────────────────────
+            //   Mean-value formula for Δu = f in 3-D:
+            //     u(x) = MeanValue(u, S(x,R)) - (R²/6) f(x) + O(R³)
+            acc -= (stepLen * stepLen / 6.f) * f(x);
+
+            if (hit) {
+                acc += g_inner(makeBP(x, dir, t_inner, n_inner, prim_inner));
+                done = true;
+                break;
+            } else {
+                x = madd(x, dir, R);
+            }
+        } // walk steps
+
+        if (!done) {
+            BoundaryPoint bp_i, bp_o;
+            float d_i = inner_.ClosestPoint(x, bp_i);
+            float d_o = outer_.ClosestPoint(x, bp_o);
+            acc += (d_o <= d_i) ? g_outer(bp_o) : g_inner(bp_i);
+            result.anyDiverged = true;
+        }
+
+        sumV     += acc;
+        sumV2    += static_cast<double>(acc) * acc;
         sumSteps += steps;
     }
 

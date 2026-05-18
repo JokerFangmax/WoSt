@@ -26,15 +26,24 @@ find_package(Threads REQUIRED)
 
 if(APPLE)
 
-    # Homebrew libomp
+    # Homebrew libomp root
+    set(LIBOMP_ROOT "/opt/homebrew/opt/libomp")
+
+    # Compiler flags
     set(OpenMP_C_FLAGS "-Xpreprocessor -fopenmp")
     set(OpenMP_CXX_FLAGS "-Xpreprocessor -fopenmp")
+
+    # Include path
+    include_directories("${LIBOMP_ROOT}/include")
+
+    # Library
+    link_directories("${LIBOMP_ROOT}/lib")
 
     set(OpenMP_C_LIB_NAMES "omp")
     set(OpenMP_CXX_LIB_NAMES "omp")
 
     set(OpenMP_omp_LIBRARY
-        /opt/homebrew/opt/libomp/lib/libomp.dylib
+        "${LIBOMP_ROOT}/lib/libomp.dylib"
     )
 
 endif()
@@ -58,6 +67,7 @@ set(SOURCES
     main.cpp
     src/WoStGeometryBackend.cpp
     src/WoStKernel.cpp
+    src/CubeOuterBoundary.cpp
 )
 
 # ============================================================================
@@ -76,6 +86,14 @@ target_compile_options(wost PRIVATE
     -Wextra
     -funroll-loops
     -ffast-math
+)
+
+# ============================================================================
+# OpenMP include dirs
+# ============================================================================
+
+target_include_directories(wost PRIVATE
+    /opt/homebrew/opt/libomp/include
 )
 
 # ============================================================================
