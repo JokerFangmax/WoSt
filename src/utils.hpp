@@ -1,4 +1,3 @@
-
 #ifndef UTILS_HPP
 #define UTILS_HPP
 
@@ -74,39 +73,29 @@ struct WalkResult {
     bool anyDiverged = false;///< true if any walk hit maxSteps limit
 };
 
-struct Random{
-    std::mt19937 rnd;
-    inline void init(int seed){
-        rnd = std::mt19937(seed);
-    }
-    inline void init_rd(){
-        rnd = std::mt19937(std::random_device{}());
-    }
-    inline std::mt19937& get_rnd(){ return rnd; }
+struct FastRNG {
+    uint32_t state;
+    explicit FastRNG(uint32_t seed = 1) noexcept : state(seed ? seed : 1) {}
 
-    // 返回一个[_min, _max)的均匀实数
-    inline double randDouble(double _min = 0, double _max = 1){
-        return std::uniform_real_distribution<>(_min, _max)(rnd);
+    inline uint32_t next() noexcept {
+        state ^= state << 13;
+        state ^= state >> 17;
+        state ^= state << 5;
+        return state;
     }
-
-    // 返回一个[_min, _max]的均匀整数
-    inline int randInt(int _min = 0, int _max = 0x7fffffff){
-        return std::uniform_int_distribution<>(_min, _max)(rnd);
+    // Returns uniform float in [0, 1)
+    inline float randFloat() noexcept {
+        return (next() >> 8) * (1.f / 16777216.f);
     }
-    Random(int x){ init(x); }
-    Random(){ init_rd(); }
 };
 
-inline vec3 sampleUnitSphere(Random& rng) {
-    float x, y, z, r2;
-    do {    
-        x  = 2.f * rng.randDouble() - 1.f;
-        y  = 2.f * rng.randDouble() - 1.f;
-        z  = 2.f * rng.randDouble() - 1.f;
-        r2 = x*x + y*y + z*z;
-    } while (r2 < 1e-12f || r2 > 1.f);
-    float inv = 1.f / std::sqrt(r2);
-    return { x * inv, y * inv, z * inv };
+// Branchless cylindrical sphere sampling – no rejection loop, no branch misprediction.
+// Mathematically equivalent to uniform sampling on S² (Marsaglia 1972 area-preserving map).
+inline vec3 sampleUnitSphere(FastRNG& rng) noexcept {
+    float z   = 1.f - 2.f * rng.randFloat();            // z  ∈ [-1, 1]
+    float r   = std::sqrt(std::max(0.f, 1.f - z * z));  // guard against fp rounding
+    float phi = 6.28318530718f * rng.randFloat();
+    return { r * std::cos(phi), r * std::sin(phi), z };
 }
 
 // ============================================================================

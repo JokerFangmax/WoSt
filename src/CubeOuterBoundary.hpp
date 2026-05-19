@@ -36,6 +36,22 @@ public:
     float StarRadius(const vec3& x, BoundaryPoint& closestBoundary) const;
 
     // -----------------------------------------------------------------------
+    // (2b) FastStarRadius – scalar only, no BoundaryPoint allocation.
+    //     For a convex AABB there are no silhouettes, so StarRadius equals
+    //     the closest face distance. Used in the walk hot-path to avoid
+    //     writing a BoundaryPoint on every step (deferred until absorption).
+    // -----------------------------------------------------------------------
+    inline float FastStarRadius(const vec3& x) const noexcept {
+        float d = x.x - bmin.x;
+        d = std::min(d, bmax.x - x.x);
+        d = std::min(d, x.y - bmin.y);
+        d = std::min(d, bmax.y - x.y);
+        d = std::min(d, x.z - bmin.z);
+        d = std::min(d, bmax.z - x.z);
+        return d;
+    }
+
+    // -----------------------------------------------------------------------
     // (3) Ray–boundary intersection
     //     Slab method for Ray-AABB intersection. 
     //     Returns true if the ray hits the boundary.

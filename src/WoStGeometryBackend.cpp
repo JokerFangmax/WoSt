@@ -327,6 +327,111 @@ float WoStGeometryBackend::ClosestSilhouetteSIMD(
     }
     return out.dist;
 }
+
+// ============================================================================
+// AVX-512 Vectorized FastStarRadius (scalar distance only, no BoundaryPoint)
+// ============================================================================
+float WoStGeometryBackend::FastStarRadiusSIMD(const vec3& x) const
+{
+    float bestD2 = std::numeric_limits<float>::max();
+
+    // Broadcast query point components across 16-lane vector registers
+    __m512 px = _mm512_set1_ps(x.x);
+    __m512 py = _mm512_set1_ps(x.y);
+    __m512 pz = _mm512_set1_ps(x.z);
+
+    __m512 bestD2_v = _mm512_set1_ps(std::numeric_limits<float>::max());
+
+    size_t n = silhouettes.size();
+    size_t n_rounded = n & ~15; // Process blocks of 16
+
+    for (size_t i = 0; i < n_rounded; i += 16) {
+        // Contiguous unaligned vector loads
+        __m512 v0x = _mm512_loadu_ps(&silhouetteSoA.v0x[i]);
+        __m512 v0y = _mm512_loadu_ps(&silhouetteSoA.v0y[i]);
+        __m512 v0z = _mm512_loadu_ps(&silhouetteSoA.v0z[i]);
+
+        __m512 dx = _mm512_sub_ps(px, v0x);
+        __m512 dy = _mm512_sub_ps(py, v0y);
+        __m512 dz = _mm512_sub_ps(pz, v0z);
+
+        // Compute s0 = dot3(n0, x - v0)
+        __m512 s0 = _mm512_mul_ps(_mm512_loadu_ps(&silhouetteSoA.n0x[i]), dx);
+        s0 = _mm512_fmadd_ps(_mm512_loadu_ps(&silhouetteSoA.n0y[i]), dy, s0);
+        s0 = _mm512_fmadd_ps(_mm512_loadu_ps(&silhouetteSoA.n0z[i]), dz, s0);
+
+        // Compute s1 = dot3(n1, x - v0)
+        __m512 s1 = _mm512_mul_ps(_mm512_loadu_ps(&silhouetteSoA.n1x[i]), dx);
+        s1 = _mm512_fmadd_ps(_mm512_loadu_ps(&silhouetteSoA.n1y[i]), dy, s1);
+        s1 = _mm512_fmadd_ps(_mm512_loadu_ps(&silhouetteSoA.n1z[i]), dz, s1);
+
+        // Silhouette condition check: s0 * s1 < 0
+        __mmask16 isSil = _mm512_cmp_ps_mask(_mm512_mul_ps(s0, s1), _mm512_setzero_ps(), _CMP_LT_OQ);
+        if (isSil == 0) continue;
+
+        // Segment distance math for valid lanes
+        __m512 abx = _mm512_sub_ps(_mm512_loadu_ps(&silhouetteSoA.v1x[i]), v0x);
+        __m512 aby = _mm512_sub_ps(_mm512_loadu_ps(&silhouetteSoA.v1y[i]), v0y);
+        __m512 abz = _mm512_sub_ps(_mm512_loadu_ps(&silhouetteSoA.v1z[i]), v0z);
+
+        __m512 t = _mm512_mul_ps(dx, abx);
+        t = _mm512_fmadd_ps(dy, aby, t);
+        t = _mm512_fmadd_ps(dz, abz, t);
+
+        __m512 d = _mm512_mul_ps(abx, abx);
+        d = _mm512_fmadd_ps(aby, aby, d);
+        d = _mm512_fmadd_ps(abz, abz, d);
+
+        // Safe division check under mask
+        __mmask16 validD = _mm512_cmp_ps_mask(d, _mm512_set1_ps(1e-12f), _CMP_GT_OQ);
+        __m512 safeD = _mm512_mask_blend_ps(~validD, d, _mm512_set1_ps(1.0f));
+        t = _mm512_div_ps(t, safeD);
+        t = _mm512_mask_mov_ps(_mm512_setzero_ps(), ~validD, t);
+
+        // Clamp projection parameter t to [0.0, 1.0]
+        t = _mm512_max_ps(_mm512_setzero_ps(), _mm512_min_ps(_mm512_set1_ps(1.0f), t));
+
+        // Clamped closest points
+        __m512 cpx = _mm512_fmadd_ps(t, abx, v0x);
+        __m512 cpy = _mm512_fmadd_ps(t, aby, v0y);
+        __m512 cpz = _mm512_fmadd_ps(t, abz, v0z);
+
+        // Compute squared distances d2 = dist2(x, cp)
+        __m512 d2 = _mm512_mul_ps(_mm512_sub_ps(px, cpx), _mm512_sub_ps(px, cpx));
+        d2 = _mm512_fmadd_ps(_mm512_sub_ps(py, cpy), _mm512_sub_ps(py, cpy), d2);
+        d2 = _mm512_fmadd_ps(_mm512_sub_ps(pz, cpz), _mm512_sub_ps(pz, cpz), d2);
+
+        // Track minimums
+        __mmask16 newMinMask = _mm512_kand(isSil, _mm512_cmp_ps_mask(d2, bestD2_v, _CMP_LT_OQ));
+        bestD2_v = _mm512_mask_blend_ps(newMinMask, bestD2_v, d2);
+    }
+
+    // Horizontal minimum reduction
+    float minD2 = _mm512_reduce_min_ps(bestD2_v);
+    if (minD2 < bestD2) {
+        bestD2 = minD2;
+    }
+
+    // Remainder loop for trailing edges
+    for (size_t i = n_rounded; i < n; ++i) {
+        float s0 = silhouetteSoA.n0x[i]*(x.x - silhouetteSoA.v0x[i]) + 
+                   silhouetteSoA.n0y[i]*(x.y - silhouetteSoA.v0y[i]) + 
+                   silhouetteSoA.n0z[i]*(x.z - silhouetteSoA.v0z[i]);
+        float s1 = silhouetteSoA.n1x[i]*(x.x - silhouetteSoA.v0x[i]) + 
+                   silhouetteSoA.n1y[i]*(x.y - silhouetteSoA.v0y[i]) + 
+                   silhouetteSoA.n1z[i]*(x.z - silhouetteSoA.v0z[i]);
+        if (s0 * s1 >= 0.f) continue;
+
+        vec3 cp;
+        float d2 = PointSegDist2(x, {silhouetteSoA.v0x[i], silhouetteSoA.v0y[i], silhouetteSoA.v0z[i]}, 
+                                    {silhouetteSoA.v1x[i], silhouetteSoA.v1y[i], silhouetteSoA.v1z[i]}, cp);
+        if (d2 < bestD2) {
+            bestD2 = d2;
+        }
+    }
+
+    return std::sqrt(bestD2);
+}
 #endif
 
 // ============================================================================
@@ -349,6 +454,147 @@ float WoStGeometryBackend::StarRadius(const vec3& x) const
 }
 
 // ============================================================================
+// (2b) FastStarRadius – scalar only, no BoundaryPoint allocation.
+//     Eliminates Store Buffer pressure in the hot-path.
+// ============================================================================
+float WoStGeometryBackend::FastStarRadius(const vec3& x) const
+{
+#ifdef __AVX512F__
+    // Re-implement ClosestPointBVH without BoundaryPoint write for max performance
+    float bestD2 = std::numeric_limits<float>::max();
+    constexpr int STACK_SIZE = 64;
+    uint32_t stk[STACK_SIZE];
+    int      top = 0;
+    stk[top++]   = 0;
+    const auto* nodes = bvh.bvhNode;
+
+    while (top > 0) {
+        uint32_t nodeIdx = stk[--top];
+        const auto& node = nodes[nodeIdx];
+        if (PointAABBDist2(x, node.aabbMin, node.aabbMax) >= bestD2) continue;
+        if (node.isLeaf()) {
+            for (uint32_t i = 0; i < node.triCount; ++i) {
+                uint32_t prim = bvh.primIdx[node.leftFirst + i];
+                vec3 a(bvh.verts[prim * 3 + 0]);
+                vec3 b(bvh.verts[prim * 3 + 1]);
+                vec3 c(bvh.verts[prim * 3 + 2]);
+                vec3  cp = ClosestPtOnTriangle(x, a, b, c);
+                float d2 = dist2(x, cp);
+                if (d2 < bestD2) bestD2 = d2;
+            }
+        } else {
+            uint32_t left  = node.leftFirst;
+            uint32_t right = node.leftFirst + 1;
+            float    dLeft  = PointAABBDist2(x, nodes[left].aabbMin,  nodes[left].aabbMax);
+            float    dRight = PointAABBDist2(x, nodes[right].aabbMin, nodes[right].aabbMax);
+            if (dLeft <= dRight) {
+                if (top + 1 < STACK_SIZE) { stk[top++] = right; stk[top++] = left; }
+            } else {
+                if (top + 1 < STACK_SIZE) { stk[top++] = left;  stk[top++] = right; }
+            }
+        }
+    }
+    
+    float ds = FastStarRadiusSIMD(x); // AVX-512 accelerated silhouette
+    return std::min(std::sqrt(bestD2), ds);
+#else
+    float bestD2 = std::numeric_limits<float>::max();
+
+    // Stack of (node_index, lower_bound_dist2).
+    constexpr int STACK_SIZE = 64;
+    uint32_t stk[STACK_SIZE];
+    int      top = 0;
+    stk[top++]   = 0;   // root
+
+    const auto* nodes = bvh.bvhNode;
+
+    while (top > 0) {
+        uint32_t nodeIdx = stk[--top];
+        const auto& node = nodes[nodeIdx];
+
+        if (PointAABBDist2(x, node.aabbMin, node.aabbMax) >= bestD2)
+            continue;
+
+        if (node.isLeaf()) {
+            for (uint32_t i = 0; i < node.triCount; ++i) {
+                uint32_t prim = bvh.primIdx[node.leftFirst + i];
+
+                vec3 a(bvh.verts[prim * 3 + 0]);
+                vec3 b(bvh.verts[prim * 3 + 1]);
+                vec3 c(bvh.verts[prim * 3 + 2]);
+
+                vec3  cp = ClosestPtOnTriangle(x, a, b, c);
+                float d2 = dist2(x, cp);
+
+                if (d2 < bestD2) {
+                    bestD2 = d2;
+                }
+            }
+        } else {
+            uint32_t left  = node.leftFirst;
+            uint32_t right = node.leftFirst + 1;
+            float    dLeft  = PointAABBDist2(x, nodes[left].aabbMin,  nodes[left].aabbMax);
+            float    dRight = PointAABBDist2(x, nodes[right].aabbMin, nodes[right].aabbMax);
+
+            if (dLeft <= dRight) {
+                if (top + 1 < STACK_SIZE) { stk[top++] = right; stk[top++] = left; }
+            } else {
+                if (top + 1 < STACK_SIZE) { stk[top++] = left;  stk[top++] = right; }
+            }
+        }
+    }
+
+    // Silhouette distance check (still requires some logic, but we can optimize it later)
+    BoundaryPoint tmp;
+    float ds = ClosestSilhouette(x, tmp); 
+    return std::min(std::sqrt(bestD2), ds);
+#endif
+}
+
+// ============================================================================
+// (2c) FastBoundaryDistance – BVH-only distance (no silhouette check).
+//     Ultra-fast approximation for early walk steps when far from boundary.
+// ============================================================================
+float WoStGeometryBackend::FastBoundaryDistance(const vec3& x) const
+{
+    float bestD2 = std::numeric_limits<float>::max();
+    constexpr int STACK_SIZE = 64;
+    uint32_t stk[STACK_SIZE];
+    int      top = 0;
+    stk[top++]   = 0;
+    const auto* nodes = bvh.bvhNode;
+
+    while (top > 0) {
+        uint32_t nodeIdx = stk[--top];
+        const auto& node = nodes[nodeIdx];
+        if (PointAABBDist2(x, node.aabbMin, node.aabbMax) >= bestD2) continue;
+        if (node.isLeaf()) {
+            for (uint32_t i = 0; i < node.triCount; ++i) {
+                uint32_t prim = bvh.primIdx[node.leftFirst + i];
+                vec3 a(bvh.verts[prim * 3 + 0]);
+                vec3 b(bvh.verts[prim * 3 + 1]);
+                vec3 c(bvh.verts[prim * 3 + 2]);
+                vec3  cp = ClosestPtOnTriangle(x, a, b, c);
+                float d2 = dist2(x, cp);
+                if (d2 < bestD2) bestD2 = d2;
+            }
+        } else {
+            uint32_t left  = node.leftFirst;
+            uint32_t right = node.leftFirst + 1;
+            float    dLeft  = PointAABBDist2(x, nodes[left].aabbMin,  nodes[left].aabbMax);
+            float    dRight = PointAABBDist2(x, nodes[right].aabbMin, nodes[right].aabbMax);
+            if (dLeft <= dRight) {
+                if (top + 1 < STACK_SIZE) { stk[top++] = right; stk[top++] = left; }
+            } else {
+                if (top + 1 < STACK_SIZE) { stk[top++] = left;  stk[top++] = right; }
+            }
+        }
+    }
+    
+    return std::sqrt(bestD2);
+}
+
+// ============================================================================
 // (3) Ray–boundary intersection
 //
 // Wraps BVH::Intersect and reconstructs the outward normal from the stored
@@ -359,7 +605,7 @@ bool WoStGeometryBackend::IntersectRay(
         float& t, vec3& hitNormal, uint32_t& primIdx) const
 {
     tinybvh::Ray ray(origin, dir, tMax);
-    bvh.Intersect(ray);
+    bvh_ray.Intersect(ray); // Automatically uses SSE/AVX accelerated 4-wide traversal
 
     if (ray.hit.t >= tMax)
         return false;
@@ -630,6 +876,7 @@ WoStGeometryBackend::WoStGeometryBackend(const std::string& objFile)
     // Build the BVH.  primCount = numTriangles (not numTriangles * 3).
     // tiny_bvh expects 3 consecutive bvhvec4 per triangle.
     bvh.Build(triangles, numTriangles);
+    bvh_ray.BuildHQ(triangles, numTriangles); // Build AVX/SSE optimized layout
 
     BuildSilhouetteEdges();
 

@@ -41,7 +41,7 @@ using namespace wost;
 
 int main(){
     std::string objfile = "./spot/spot_triangulated.obj";
-    unsigned int numSamples = 100000;
+    unsigned int numSamples = 100000; // Reduced for quick testing
     float L = 1.0f;
 
     WoStGeometryBackend interior(objfile);
@@ -93,9 +93,9 @@ int main(){
         {
             // Thread-local random number generator to avoid contention
             #ifdef _OPENMP
-            Random thread_rng(omp_get_thread_num() + static_cast<int>(time(nullptr)));
+            FastRNG thread_rng(omp_get_thread_num() + static_cast<int>(time(nullptr)));
             #else
-            Random thread_rng;
+            FastRNG thread_rng;
             #endif
             
             // Thread-local storage for results to minimize synchronization
@@ -106,9 +106,9 @@ int main(){
             
             #pragma omp for schedule(dynamic, 64) nowait
             for (uint32_t idx = 0; idx < numSamples; ++idx) {
-                float x = thread_rng.randDouble(-L, L);
-                float y = thread_rng.randDouble(-L, L);
-                float z = thread_rng.randDouble(-L, L);    
+                float x = thread_rng.randFloat() * 2.0f * L - L;
+                float y = thread_rng.randFloat() * 2.0f * L - L;
+                float z = thread_rng.randFloat() * 2.0f * L - L;    
                 vec3 point = {x, y, z};
                         
                 if (kernel.InDomain(point)) {

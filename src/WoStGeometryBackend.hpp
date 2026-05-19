@@ -46,6 +46,18 @@ public:
                      BoundaryPoint& closestSilhouette) const;
 
     // -----------------------------------------------------------------------
+    // (2b) FastStarRadius – scalar only, no BoundaryPoint allocation.
+    //     Used in the walk hot-path to avoid writing a BoundaryPoint on every step.
+    // -----------------------------------------------------------------------
+    float FastStarRadius(const vec3& x) const;
+
+    // -----------------------------------------------------------------------
+    // (2c) FastBoundaryDistance – BVH-only distance (no silhouette check).
+    //     Ultra-fast approximation for early walk steps when far from boundary.
+    // -----------------------------------------------------------------------
+    float FastBoundaryDistance(const vec3& x) const;
+
+    // -----------------------------------------------------------------------
     // (3) Ray–boundary intersection
     //     Returns true if the ray [origin, origin + tMax*dir] hits ∂Ω.
     //     On hit, sets t (parametric), hitNormal (outward), primIdx.
@@ -110,6 +122,7 @@ private:
     float ClosestSilhouette (const vec3& x, BoundaryPoint& out) const;
 #ifdef __AVX512F__
     float ClosestSilhouetteSIMD(const vec3& x, BoundaryPoint& out) const;
+    float FastStarRadiusSIMD(const vec3& x) const; // AVX-512 accelerated version
 #endif
     // --- build-time helpers -------------------------------------------------
     void LoadOBJ              (const std::string& path);
@@ -118,6 +131,7 @@ private:
 
     // --- data ---------------------------------------------------------------
     tinybvh::BVH bvh;
+    tinybvh::BVH4_CPU bvh_ray; // 4-wide BVH for SSE/AVX accelerated ray tracing
 
     // Flat SOA: triangle i has vertices at triangles[i*3 + {0,1,2}]
     vec4*    triangles    = nullptr;
