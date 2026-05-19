@@ -621,24 +621,17 @@ bool WoStGeometryBackend::IntersectRay(
     return true;
 }
 
-// ============================================================================
-// (4) IsInside – ray-casting with randomized direction
-//
-// Count how many times a ray from x crosses ∂Ω.
-// Odd count → x is inside Ω.
-//
-// We randomize the ray direction on every call to avoid aligning with mesh
-// grids or coplanar edges, which can cause parity errors.
-// ============================================================================
 bool WoStGeometryBackend::IsInside(const vec3& x) const
 {
     // Randomize ray direction to avoid alignment issues with mesh geometry
-    // Use a pseudo-random direction based on the point position with proper spherical mapping
     float seed = x.x * 12.9898f + x.y * 78.233f + x.z * 37.719f;
-    float u = std::fmod(seed * 43758.5453f, 1.0f); // [0, 1]
-    float v = std::fmod(seed * 67108.864f, 1.0f);  // [0, 1]
+    
+    // 修复：确保取绝对值，防止产生负数的 u 和 v，从而导致 acos(>1) 产生 NaN
+    float u = std::abs(std::fmod(seed * 43758.5453f, 1.0f)); 
+    float v = std::abs(std::fmod(seed * 67108.864f, 1.0f));  
+    
     float theta = 2.0f * 3.14159265359f * u;
-    float phi = std::acos(1.0f - 2.0f * v);
+    float phi = std::acos(1.0f - 2.0f * v); // 现在 1.0 - 2.0*v 严格保证在 [-1, 1] 之间
     
     vec3 RAY_DIR;
     RAY_DIR.x = std::sin(phi) * std::cos(theta);
