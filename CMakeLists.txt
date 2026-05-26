@@ -75,16 +75,24 @@ add_executable(wost ${SOURCES})
 # Compile options
 # ============================================================================
 
-target_compile_options(wost PRIVATE
-    -fopenmp
-    -march=native 
-    -mtune=native
-    -O3
-    -Wall
-    -Wextra
-    -funroll-loops
-    -ffast-math
-)
+if(MSVC)
+    target_compile_options(wost PRIVATE
+        /openmp
+        /O2
+        /W4
+    )
+else()
+    target_compile_options(wost PRIVATE
+        -fopenmp
+        -march=native
+        -mtune=native
+        -O3
+        -Wall
+        -Wextra
+        -funroll-loops
+        -ffast-math
+    )
+endif()
 
 # AVX-512 specific flags (only if compiler supports it)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
@@ -109,9 +117,11 @@ endif()
 # OpenMP include dirs
 # ============================================================================
 
-target_include_directories(wost PRIVATE
-    /opt/homebrew/opt/libomp/include
-)
+if(APPLE)
+    target_include_directories(wost PRIVATE
+        /opt/homebrew/opt/libomp/include
+    )
+endif()
 
 # ============================================================================
 # Link

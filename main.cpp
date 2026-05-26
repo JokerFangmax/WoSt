@@ -43,6 +43,7 @@ int main(){
     std::string objfile = "./spot/spot_triangulated.obj";
     unsigned int numSamples = 100000; // Reduced for quick testing
     float L = 1.0f;
+    const int sliceResolution = 96;
 
     WoStGeometryBackend interior(objfile);
     CubeOuterBoundary exterior(-L, L);
@@ -139,7 +140,45 @@ int main(){
         printf("Valid points: %d / %d\n", valid_count, numSamples);
         printf("Computation time: %.2f seconds\n", elapsed.count());
         printf("Average samples per point: %d\n", numSamples);
-        
+
+        GridInfo sliceInfo;
+        sliceInfo.nx = sliceResolution;
+        sliceInfo.ny = sliceResolution;
+        sliceInfo.nz = 1;
+        sliceInfo.ox = -L;
+        sliceInfo.oy = -L;
+        sliceInfo.oz = 0.0f;
+        sliceInfo.dx = (2.0f * L) / static_cast<float>(sliceResolution - 1);
+        sliceInfo.dy = (2.0f * L) / static_cast<float>(sliceResolution - 1);
+        sliceInfo.dz = 1.0f;
+
+        std::vector<GridPoint> xySlice(sliceInfo.nx * sliceInfo.ny * sliceInfo.nz);
+        #pragma omp parallel for schedule(dynamic, 8)
+        for (int iy = 0; iy < sliceInfo.ny; ++iy) {
+            for (int ix = 0; ix < sliceInfo.nx; ++ix) {
+                const int flat = iy * sliceInfo.nx + ix;
+                const float x = sliceInfo.ox + sliceInfo.dx * static_cast<float>(ix);
+                const float y = sliceInfo.oy + sliceInfo.dy * static_cast<float>(iy);
+                const vec3 point = {x, y, 0.0f};
+
+                GridPoint gp{};
+                if (kernel.InDomain(point)) {
+                    WalkResult result = kernel.SolvePoisson(point, g_inner, g_outer, f, params);
+                    gp.value = result.value;
+                    gp.stdErr = result.stdErr;
+                    gp.meanSteps = result.meanSteps;
+                    gp.exact = dot3(point, point);
+                    gp.valid = true;
+                } else {
+                    gp.value = 0.0f;
+                    gp.stdErr = 0.0f;
+                    gp.meanSteps = 0.0f;
+                    gp.exact = 0.0f;
+                    gp.valid = false;
+                }
+                xySlice[flat] = gp;
+            }
+        }
 
         // Write point cloud output
         if (WriteVTKPointCloud("test1_manufactured_pointcloud.vtk", pointcloud, true)) {
@@ -148,6 +187,12 @@ int main(){
             printf("✗ Failed to write point cloud\n");
         }
         
+        if (WriteVTKStructuredPoints("test1_manufactured_slice_xy.vtk", sliceInfo, xySlice, true)) {
+            printf("XY slice written to test1_manufactured_slice_xy.vtk\n");
+        } else {
+            printf("Failed to write XY slice\n");
+        }
+
         // Print some statistics
         float max_error = 0.0f;
         float total_error = 0.0f;

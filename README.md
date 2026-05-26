@@ -1,1 +1,43 @@
-# WoSt_Final_project
+# WoSt Final Project
+
+This repository currently has two runnable entry points:
+
+1. `WoSt.py`
+   A lightweight Python demo of a 2D Walk-on-Stars Laplace solver.
+2. `main.cpp`
+   The full C++ project built with CMake.
+
+## Python demo
+
+Recommended on Windows:
+
+```powershell
+.\setup_env.ps1
+.\run_python.ps1
+```
+
+The quick script uses a smaller default workload (`--resolution 40 --walks 200`) so the first run finishes much faster.
+
+Manual commands:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe .\WoSt.py --resolution 40 --walks 200
+```
+
+## C++ build
+
+Windows prerequisites:
+
+- Visual Studio Build Tools 2022
+- MSVC C++ compiler tools (`cl.exe`)
+- CMake
+
+Build with:
+
+```powershell
+.\build_cpp.ps1
+```
+
+If `build_cpp.ps1` reports that `cl` or `cmake` is missing, install the C++ workload/components into your existing Visual Studio Build Tools installation first, then rerun the script.

@@ -1,3 +1,4 @@
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -104,9 +105,16 @@ def solve_grid(
 
 if __name__ == "__main__":
 
+    parser = argparse.ArgumentParser(description="Walk-on-Stars Laplace solver demo")
+    parser.add_argument("--resolution", type=int, default=40, help="Grid resolution")
+    parser.add_argument("--walks", type=int, default=200, help="Random walks per grid point")
+    parser.add_argument("--save", type=str, default="", help="Optional output image path")
+    parser.add_argument("--no-show", action="store_true", help="Skip interactive plot display")
+    args = parser.parse_args()
+
     xs, ys, U = solve_grid(
-        resolution=60,
-        n_walks=1000
+        resolution=args.resolution,
+        n_walks=args.walks
     )
 
     plt.figure(figsize=(7, 6))
@@ -123,4 +131,8 @@ if __name__ == "__main__":
     plt.xlabel('x')
     plt.ylabel('y')
 
-    plt.show()
+    if args.save:
+        plt.savefig(args.save, dpi=150, bbox_inches='tight')
+
+    if not args.no_show:
+        plt.show()
