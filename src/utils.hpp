@@ -1,6 +1,30 @@
 #ifndef UTILS_HPP
 #define UTILS_HPP
 
+#ifndef __has_builtin
+#define __has_builtin(x) 0
+#endif
+
+#define NO_THREADED_BUILDS
+
+#if defined(_M_X64) || defined(_M_IX86) || defined(__SSE__) || defined(__SSE2__)
+#ifndef BVH_USESSE
+#define BVH_USESSE
+#endif
+#endif
+
+#if defined(__AVX__) || defined(_M_AVX) || defined(__AVX2__) || defined(_M_AVX2)
+#ifndef BVH_USEAVX
+#define BVH_USEAVX
+#endif
+#endif
+
+#if defined(__AVX2__) || defined(_M_AVX2)
+#ifndef BVH_USEAVX2
+#define BVH_USEAVX2
+#endif
+#endif
+
 #include "tiny_bvh.h"
 #include <functional>
 #include <cstdint>

@@ -78,8 +78,18 @@ add_executable(wost ${SOURCES})
 if(MSVC)
     target_compile_options(wost PRIVATE
         /openmp
+        /arch:AVX2
         /O2
         /W4
+    )
+elseif(MINGW)
+    target_compile_options(wost PRIVATE
+        -fopenmp
+        -O3
+        -Wall
+        -Wextra
+        -funroll-loops
+        -ffast-math
     )
 else()
     target_compile_options(wost PRIVATE
@@ -95,7 +105,7 @@ else()
 endif()
 
 # AVX-512 specific flags (only if compiler supports it)
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang") AND NOT MINGW)
     # Check if AVX-512 is supported by the CPU
     include(CheckCXXSourceCompiles)
     set(CMAKE_REQUIRED_FLAGS "-mavx512f")

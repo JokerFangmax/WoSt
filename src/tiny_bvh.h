@@ -198,7 +198,9 @@ THE SOFTWARE.
 #include <cstdint>
 #include <atomic> // for SBVH builds
 #include <vector>
+#ifdef ENABLE_THREADED_BUILDS
 #include <thread> // for threaded builds
+#endif
 
 // Platform-independent compile-time warnings.
 #define EMIT_COMPILER_WARNING_STRINGIFY0(x) #x
@@ -2430,6 +2432,7 @@ void BVH::Build( uint32_t nodeIdx, uint32_t depth )
 			bvhNode[n + 1].aabbMin = bestRMin, bvhNode[n + 1].aabbMax = bestRMax;
 			bvhNode[n + 1].leftFirst = j, bvhNode[n + 1].triCount = rightCount;
 			node.leftFirst = n, node.triCount = 0;
+			#ifdef ENABLE_THREADED_BUILDS
 			if (depth < 5 && threadedBuild)
 			{
 				std::thread t1( &Build_, n, depth + 1, this );
@@ -2438,6 +2441,7 @@ void BVH::Build( uint32_t nodeIdx, uint32_t depth )
 				t2.join(); // TODO: join is only needed in the 'all done' section below.
 				break;
 			}
+			#endif
 			task[taskCount++] = n + 1, nodeIdx = n;
 		}
 		// fetch subdivision task from stack
@@ -2577,6 +2581,7 @@ void BVH::BuildFullSweep( uint32_t nodeIdx, uint32_t depth )
 			bvhNode[n + 1].leftFirst = node.leftFirst + leftCount;
 			bvhNode[n + 1].triCount = rightCount;
 			node.leftFirst = n, node.triCount = 0;
+			#ifdef ENABLE_THREADED_BUILDS
 			if (leftCount + rightCount > 2000 && depth < 5 && threadedBuild)
 			{
 				std::thread t1( &BuildFullSweep_, n, depth + 1, this );
@@ -2585,6 +2590,7 @@ void BVH::BuildFullSweep( uint32_t nodeIdx, uint32_t depth )
 				t2.join(); // TODO: join is only needed in the 'all done' section below.
 				break;
 			}
+			#endif
 			// recurse
 			task[taskCount++] = n + 1, nodeIdx = n;
 		}
@@ -2982,6 +2988,7 @@ void BVH::BuildHQTask(
 			bvhNode[rightChildIdx].leftFirst = B, bvhNode[rightChildIdx].triCount = rightCount;
 			node.leftFirst = leftChildIdx, node.triCount = 0;
 			// recurse
+			#ifdef ENABLE_THREADED_BUILDS
 			if (depth < maxDepth && threadedBuild)
 			{
 				std::thread t1( &BuildHQTask_, leftChildIdx, depth + 1, maxDepth, sliceStart, (A + B) >> 1, idxTmp, this );
@@ -2990,6 +2997,7 @@ void BVH::BuildHQTask(
 				t2.join(); // TODO: join is only needed in the 'all done' section below.
 				break;
 			}
+			#endif
 			// proceed with left child, push right child on local stack
 			localTask[localTasks].node = rightChildIdx, localTask[localTasks].depth = depth;
 			localTask[localTasks].sliceStart = (A + B) >> 1, localTask[localTasks++].sliceEnd = sliceEnd;
@@ -6640,6 +6648,7 @@ void BVH::BuildAVXSubtree( uint32_t nodeIdx, uint32_t depth )
 			node.leftFirst = n, node.triCount = 0;
 			*(__m256*)& bvhNode[n + 1] = _mm256_xor_ps( bestRBox, signFlip8 );
 			bvhNode[n + 1].leftFirst = i, bvhNode[n + 1].triCount = rightCount;
+			#ifdef ENABLE_THREADED_BUILDS
 			if (leftCount + rightCount > 2000 && depth < 5 && threadedBuild)
 			{
 				std::thread t1( &BuildAVXSubtree_, n, depth + 1, this );
@@ -6648,6 +6657,7 @@ void BVH::BuildAVXSubtree( uint32_t nodeIdx, uint32_t depth )
 				t2.join(); // TODO: join is only needed in the 'all done' section below.
 				break;
 			}
+			#endif
 			task[taskCount++] = n + 1, nodeIdx = n;
 		}
 		// fetch subdivision task from stack
@@ -8113,6 +8123,7 @@ void BVH_Double::Build( uint64_t nodeIdx, uint32_t depth )
 			bvhNode[n + 1].aabbMin = bestRMin, bvhNode[n + 1].aabbMax = bestRMax;
 			bvhNode[n + 1].leftFirst = j, bvhNode[n + 1].triCount = rightCount;
 			node.leftFirst = n, node.triCount = 0;
+			#ifdef ENABLE_THREADED_BUILDS
 			if (depth < 5)
 			{
 				std::thread t1( &BuildDouble_, n, depth + 1, this );
@@ -8121,6 +8132,7 @@ void BVH_Double::Build( uint64_t nodeIdx, uint32_t depth )
 				t2.join();
 				break;
 			}
+			#endif
 			// recurse
 			task[taskCount++] = n + 1, nodeIdx = n;
 		}

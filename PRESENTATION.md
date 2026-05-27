@@ -42,9 +42,53 @@ The slice + error + point-cloud combination gives you all three in one frame.
 
 ## Commands
 
-### Build the slide-ready figure
+### Build the slide-ready figure from the real testcase
 
-If you do not already have the `.vtk` outputs from the C++ solver, generate presentation-ready stand-in data first:
+Preferred path:
+
+```powershell
+.\generate_real_presentation_assets.ps1
+```
+
+That route builds the C++ solver, runs the actual `main.cpp` testcase, and then creates `presentation_figure.png` from the resulting VTK files.
+
+### Current real-run snapshot
+
+The current checked-in visualization assets were regenerated from the real `main.cpp` testcase on May 27, 2026.
+
+Key numbers from that run:
+
+- attempted random query points: `100000`
+- valid domain points written to the point cloud: `91025`
+- slice resolution: `96 x 96 x 1`
+- wall-clock solve time: `203.68 s`
+- reported max absolute error: `10.003481`
+- reported mean absolute error: `2.636646`
+
+Generated assets from that run:
+
+- `test1_manufactured_pointcloud.vtk`
+- `test1_manufactured_slice_xy.vtk`
+- `presentation_figure.png`
+- `live_demo.gif`
+- `live_demo_poster.png`
+
+### How to talk about these numbers
+
+Recommended framing:
+
+1. `91025` valid samples means the 3D point cloud is coming from the actual annular Spot-domain testcase, not a toy stand-in.
+2. `96 x 96` on the slice is dense enough to show the field structure clearly on a slide.
+3. `203.68 s` is a good reminder that the live talk should use precomputed assets, not a full rerun.
+4. The current error numbers are useful as diagnostics, but they should be presented carefully because the manufactured-test boundary setup in `main.cpp` is not yet a perfectly clean validation benchmark.
+
+Suggested one-line script:
+
+`This figure comes from the real C++ Walk-on-Stars testcase on the Spot geometry: about 91k valid 3D samples plus a 96 by 96 verification slice.`
+
+### Fallback: build the figure from stand-in data
+
+If you do not yet have a working C++ toolchain, generate presentation-ready stand-in data first:
 
 ```powershell
 .\.venv\Scripts\python.exe .\generate_presentation_data.py
@@ -86,6 +130,7 @@ Then build the figure:
    Show the point cloud first for stochastic flavor.
 4. Immediately reveal the polished slice and error view.
    This is where the audience understands both the field and the validation.
+   Mention that the displayed figure is precomputed from the real `main.cpp` run, not from the Python stand-in generator.
 5. End with a rotating ParaView shot of the Spot domain.
 
 ### What not to do live
@@ -93,6 +138,7 @@ Then build the figure:
 - Do not rely on a full heavy 3D recomputation on stage.
 - Do not make the audience parse raw terminal output for too long.
 - Do not show only a noisy point cloud without a cleaner scalar slice.
+- Do not oversell the absolute-error number as a polished benchmark until the manufactured boundary conditions in `main.cpp` are tightened up.
 
 ## A reliable live-demo structure
 

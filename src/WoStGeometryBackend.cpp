@@ -605,7 +605,8 @@ bool WoStGeometryBackend::IntersectRay(
         float& t, vec3& hitNormal, uint32_t& primIdx) const
 {
     tinybvh::Ray ray(origin, dir, tMax);
-    bvh_ray.Intersect(ray); // Automatically uses SSE/AVX accelerated 4-wide traversal
+    // Use the scalar BVH traversal for maximum toolchain compatibility.
+    bvh.Intersect(ray);
 
     if (ray.hit.t >= tMax)
         return false;
@@ -869,7 +870,7 @@ WoStGeometryBackend::WoStGeometryBackend(const std::string& objFile)
     // Build the BVH.  primCount = numTriangles (not numTriangles * 3).
     // tiny_bvh expects 3 consecutive bvhvec4 per triangle.
     bvh.Build(triangles, numTriangles);
-    bvh_ray.BuildHQ(triangles, numTriangles); // Build AVX/SSE optimized layout
+    bvh_ray.BuildHQ(triangles, numTriangles); // Kept available for faster paths on compatible toolchains
 
     BuildSilhouetteEdges();
 

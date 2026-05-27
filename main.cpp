@@ -16,7 +16,6 @@
 //   test1_pointcloud.vtk     – unstructured point cloud for test 1
 // =============================================================================
 
-#include "src/tiny_bvh.h"
 #include "src/WoStGeometryBackend.hpp"
 #include "src/CubeOuterBoundary.hpp"
 #include "src/WoStKernel.hpp"
@@ -106,7 +105,7 @@ int main(){
             #endif
             
             #pragma omp for schedule(dynamic, 64) nowait
-            for (uint32_t idx = 0; idx < numSamples; ++idx) {
+            for (int idx = 0; idx < static_cast<int>(numSamples); ++idx) {
                 float x = thread_rng.randFloat() * 2.0f * L - L;
                 float y = thread_rng.randFloat() * 2.0f * L - L;
                 float z = thread_rng.randFloat() * 2.0f * L - L;    
@@ -130,7 +129,7 @@ int main(){
                 pointcloud.insert(pointcloud.end(), 
                                  std::make_move_iterator(local_results.begin()),
                                  std::make_move_iterator(local_results.end()));
-                valid_count += local_results.size();
+                valid_count += static_cast<int>(local_results.size());
             }
         }
         
