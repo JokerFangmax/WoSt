@@ -32,6 +32,7 @@
 #include <ctime>
 #include <iostream>
 #include <fstream>
+#include <limits>
 
 
 using vec3 = tinybvh::bvhvec3;
@@ -77,14 +78,21 @@ using SourceFn = std::function<float(const vec3&)>;
 /// Predicate – returns true if a boundary point lies on the Neumann region ΓN
 using NeumannPredFn = std::function<bool(const BoundaryPoint&)>;
 
+enum class VarianceReductionMode : uint8_t {
+    None = 0,
+    Antithetic = 1,
+};
+
 // ===========================================================================
 // Walk parameters
 // ===========================================================================
 struct WoStParams {
     int numSamples = 256;   ///< independent random walks per query point
     int maxSteps   = 512;   ///< safety cap on walk length
+    float neumannOffset = 5e-4f; ///< reinjection offset used after a Neumann hit
     float eps = 1e-4f; ///< absorption radius near ∂Ω
     uint64_t seed = 0xDEADBEEF; ///< base RNG seed (varied per sample)
+    VarianceReductionMode varianceReduction = VarianceReductionMode::None;
 };
 
 // ===========================================================================
@@ -173,14 +181,17 @@ inline BoundaryPoint makeBP(const vec3& origin, const vec3& dir, float t, const 
 // -----------------------------------------------------------------------
 // Finalise statistics from accumulated sums.
 // -----------------------------------------------------------------------
-inline void finalise(WalkResult& r, double sumV, double sumV2, int sumSteps, int N) {
-    r.value     = static_cast<float>(sumV / N);
-    r.meanSteps = static_cast<float>(sumSteps) / static_cast<float>(N);
+inline void finalise(WalkResult& r, double sumV, double sumV2, int sumSteps,
+                     int estimatorCount, int stepDenom = -1) {
+    const int stepsDenom = (stepDenom > 0) ? stepDenom : estimatorCount;
 
-    double mean  = sumV / N;
-    double var   = std::max(0.0, sumV2 / N - mean * mean);
+    r.value     = static_cast<float>(sumV / estimatorCount);
+    r.meanSteps = static_cast<float>(sumSteps) / static_cast<float>(stepsDenom);
+
+    double mean  = sumV / estimatorCount;
+    double var   = std::max(0.0, sumV2 / estimatorCount - mean * mean);
     double sigma = std::sqrt(var);                     // population std-dev
-    r.stdErr     = static_cast<float>(sigma / std::sqrt(static_cast<double>(N)));
+    r.stdErr     = static_cast<float>(sigma / std::sqrt(static_cast<double>(estimatorCount)));
 }
 
 // ===========================================================================
