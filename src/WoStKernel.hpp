@@ -45,15 +45,6 @@ public:
                             const DirichletFn& g_outer,
                             const WoStParams&  p = {}) const;
 
-    WalkResult SolveLaplace(const vec3&         x,
-                            const DirichletFn&  g_inner,
-                            const DirichletFn&  g_outer,
-                            const NeumannFn&    h_inner,
-                            const NeumannFn&    h_outer,
-                            const NeumannPredFn& is_neumann_inner,
-                            const NeumannPredFn& is_neumann_outer,
-                            const WoStParams&   p = {}) const;
-
     // -----------------------------------------------------------------------
     // (2) Poisson  Δu = f
     //       u = g_inner  on Γ_inner
@@ -66,16 +57,6 @@ public:
                             const DirichletFn& g_outer,
                             const SourceFn&    f,
                             const WoStParams&  p = {}) const;
-
-    WalkResult SolvePoisson(const vec3&         x,
-                            const DirichletFn&  g_inner,
-                            const DirichletFn&  g_outer,
-                            const NeumannFn&    h_inner,
-                            const NeumannFn&    h_outer,
-                            const NeumannPredFn& is_neumann_inner,
-                            const NeumannPredFn& is_neumann_outer,
-                            const SourceFn&     f,
-                            const WoStParams&   p = {}) const;
 
 private:
     // Assemble a BoundaryPoint for the outer cube (no triangle index).
