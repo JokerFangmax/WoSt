@@ -32,6 +32,9 @@
 #include <ctime>
 #include <iostream>
 #include <fstream>
+#include <algorithm>
+#include <cmath>
+#include <limits>
 
 
 using vec3 = tinybvh::bvhvec3;
@@ -85,6 +88,12 @@ struct WoStParams {
     int maxSteps   = 512;   ///< safety cap on walk length
     float eps = 1e-4f; ///< absorption radius near ∂Ω
     uint64_t seed = 0xDEADBEEF; ///< base RNG seed (varied per sample)
+
+    bool adaptiveSampling = false;
+    int minSamples = 32;
+    int maxSamples = 1024;
+    int batchSize = 32;
+    float targetStdErr = 1e-3f;
 };
 
 // ===========================================================================
@@ -95,6 +104,7 @@ struct WalkResult {
     float stdErr      = 0.f;  ///< standard error  σ / sqrt(N)
     float meanSteps   = 0.f;  ///< average walk length in steps
     bool anyDiverged = false;///< true if any walk hit maxSteps limit
+    int samplesUsed   = 0;    ///< actual number of random walks used
 };
 
 struct FastRNG {
@@ -174,8 +184,17 @@ inline BoundaryPoint makeBP(const vec3& origin, const vec3& dir, float t, const 
 // Finalise statistics from accumulated sums.
 // -----------------------------------------------------------------------
 inline void finalise(WalkResult& r, double sumV, double sumV2, int sumSteps, int N) {
+    if (N <= 0) {
+        r.value = 0.f;
+        r.stdErr = 0.f;
+        r.meanSteps = 0.f;
+        r.samplesUsed = 0;
+        return;
+    }
+
     r.value     = static_cast<float>(sumV / N);
     r.meanSteps = static_cast<float>(sumSteps) / static_cast<float>(N);
+    r.samplesUsed = N;
 
     double mean  = sumV / N;
     double var   = std::max(0.0, sumV2 / N - mean * mean);
@@ -206,11 +225,12 @@ inline void finalise(WalkResult& r, double sumV, double sumV2, int sumSteps, int
 // ===========================================================================
 
 struct PointSolution {
-    vec3  pos;
-    float value;
-    float stdErr;
-    float meanSteps;
-    float exact;   // optional analytic value (0 if unknown); written only when hasExact=true
+    vec3  pos{};
+    float value = 0.f;
+    float stdErr = 0.f;
+    float meanSteps = 0.f;
+    int samplesUsed = 0;
+    float exact = 0.f;   // optional analytic value (0 if unknown); written only when hasExact=true
 };
 
 // ---------------------------------------------------------------------------
@@ -273,6 +293,11 @@ inline bool WriteVTKPointCloud(const std::string&                filename,
          "LOOKUP_TABLE default\n";
     for (const auto& p : pts) f << p.meanSteps << '\n';
 
+    // actual number of walks used
+    f << "SCALARS samples_used int 1\n"
+         "LOOKUP_TABLE default\n";
+    for (const auto& p : pts) f << p.samplesUsed << '\n';
+
     // optional exact solution + absolute error
     if (hasExact) {
         f << "SCALARS exact float 1\n"
@@ -295,11 +320,12 @@ inline bool WriteVTKPointCloud(const std::string&                filename,
 // Invalid points (outside domain) should have value = NaN.
 // ===========================================================================
 struct GridPoint {
-    float value;      // NaN  if outside domain
-    float stdErr;
-    float meanSteps;
-    float exact;      // optional
-    bool  valid;      // false if outside domain
+    float value = 0.f;      // NaN if outside domain
+    float stdErr = 0.f;
+    float meanSteps = 0.f;
+    int samplesUsed = 0;
+    float exact = 0.f;      // optional
+    bool  valid = false;    // false if outside domain
 };
 
 inline bool WriteVTKStructuredPoints(const std::string&           filename,
@@ -351,6 +377,12 @@ inline bool WriteVTKStructuredPoints(const std::string&           filename,
          "LOOKUP_TABLE default\n";
     for (const auto& g : grid)
         f << (g.valid ? g.meanSteps : 0.f) << '\n';
+
+    // actual number of walks used
+    f << "SCALARS samples_used int 1\n"
+         "LOOKUP_TABLE default\n";
+    for (const auto& g : grid)
+        f << (g.valid ? g.samplesUsed : 0) << '\n';
 
     // optional exact + error
     if (hasExact) {

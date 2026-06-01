@@ -74,3 +74,110 @@ After a successful build, the solver can also be run manually before generating 
 .\build\Release\wost.exe
 .\.venv\Scripts\python.exe .\presentation_viz.py --slice test1_manufactured_slice_xy.vtk --pointcloud test1_manufactured_pointcloud.vtk --output presentation_figure.png
 ```
+
+## Benchmarks & Results
+
+The C++ executable now runs a clean Dirichlet-only Laplace benchmark on
+
+```text
+Omega = outer AABB cube - inner triangle mesh
+u(x,y,z) = x + y + z
+Delta u = 0
+```
+
+Both the inner mesh boundary and outer cube boundary use the same exact Dirichlet value, and the Neumann predicate is disabled. This is the primary accuracy benchmark because the analytic solution is unambiguous.
+
+Build:
+
+```powershell
+mkdir build
+cd build
+cmake ..
+cmake --build . -j
+cd ..
+```
+
+Run all benchmarks from the project root:
+
+```powershell
+.\build\wost.exe --mode all --queries 20000 --grid 48 --threads 8
+```
+
+With Visual Studio multi-config builds, the executable may be under `build\Release`:
+
+```powershell
+.\build\Release\wost.exe --mode all --queries 20000 --grid 48 --threads 8
+```
+
+Run individual benchmark modes:
+
+```powershell
+.\build\wost.exe --mode convergence --queries 20000 --threads 8
+.\build\wost.exe --mode epsilon --queries 20000 --threads 8
+.\build\wost.exe --mode grid --grid 48 --threads 8
+.\build\wost.exe --mode adaptive --queries 20000 --grid 48 --threads 8
+.\build\wost.exe --mode threads --queries 5000 --threads 8
+.\build\wost.exe --mode geometry --queries 1000 --threads 8
+```
+
+Useful options:
+
+```text
+--obj ./spot/spot_triangulated.obj
+--queries 20000
+--grid 48
+--threads 8
+--seed 12345
+--cube 1.0
+```
+
+Benchmark rows are appended to:
+
+```text
+results/benchmark_summary.csv
+```
+
+The CSV includes runtime, throughput, RMSE, MAE, max absolute error, mean standard error, mean walk steps, divergence count, and mean samples used.
+
+Generate plots:
+
+```powershell
+python .\scripts\plot_benchmarks.py
+```
+
+This writes:
+
+```text
+results/rmse_vs_walks.png
+results/epsilon_tradeoff.png
+results/adaptive_vs_fixed.png
+results/thread_speedup.png
+results/bvh_vs_bruteforce.png
+```
+
+The plotting script uses `pandas` if available, falls back to Python's `csv` module, and requires `matplotlib` for image output.
+
+Structured VTK diagnostics are written for ParaView:
+
+```text
+results/linear_dirichlet_grid.vtk
+results/adaptive_sampling_grid.vtk
+```
+
+Open these files in ParaView with `File > Open`, then color by one of the scalar fields:
+
+- `solution`: Monte Carlo estimate.
+- `std_error`: estimated standard error of the Monte Carlo mean.
+- `mean_steps`: average walk length per query point.
+- `samples_used`: actual random walks used at the point.
+- `exact`: analytic value `x + y + z`.
+- `abs_error`: absolute error against the analytic solution.
+- `is_valid`: `1` inside the simulation domain, `0` outside.
+
+The adaptive sampling benchmark is a small innovation over fixed sampling. Instead of assigning the same number of random walks to every point, the solver estimates standard error online and stops early in low-variance regions, up to the configured maximum sample count.
+
+For the high-resolution Bunny workflow, including the `obj/Bunny.obj` commands and expected outputs, see:
+
+```text
+docs/BUNNY_BENCHMARK_WORKFLOW.md
+```
