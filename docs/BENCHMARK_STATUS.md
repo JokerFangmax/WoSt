@@ -481,6 +481,7 @@ python .\scripts\plot_benchmarks.py
 | Mean steps | Done | `mean_steps` | Point cloud and grid |
 | Samples used | Done | `samples_used` | Added for adaptive sampling |
 | Analytic ground truth | Done | `exact = x+y+z` | Clean Dirichlet-only Laplace test |
+| Mixed Neumann benchmark | Done | `--mode neumann`, `neumann_mixed_grid.vtk` | Inner Bunny Neumann, outer cube Dirichlet |
 | RMSE / MAE / max error | Done | `benchmark_summary.csv` | Quantitative accuracy |
 | Convergence over M | Done | `benchmark_name=convergence` | Expect `O(1/sqrt(M))` trend |
 | Epsilon sweep | Done | `benchmark_name=epsilon` | Expect smaller epsilon -> more steps |

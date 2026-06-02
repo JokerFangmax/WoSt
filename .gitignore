@@ -1,5 +1,4 @@
 /build
 /build-*/
 /.venv
-/results
 /results_archive_*/

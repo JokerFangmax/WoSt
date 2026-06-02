@@ -119,6 +119,30 @@ def plot_rmse_vs_walks(rows, plt):
     plt.close()
 
 
+def plot_named_rmse_vs_walks(rows, plt, benchmark_name, output_name, title):
+    data = latest_by_walks(rows, benchmark_name)
+    if not data:
+        print(f"No {benchmark_name} rows found; skipping {output_name}")
+        return
+
+    x = [float(r["walks_per_point"]) for r in data]
+    y = [float(r["rmse"]) for r in data]
+
+    plt.figure(figsize=(6.5, 4.5))
+    plt.loglog(x, y, marker="o", label="RMSE")
+    if len(x) >= 2 and y[0] > 0:
+        ref = [y[0] * math.sqrt(x[0] / xi) for xi in x]
+        plt.loglog(x, ref, linestyle="--", label="O(1/sqrt(M))")
+    plt.xlabel("walks per point (M)")
+    plt.ylabel("RMSE")
+    plt.title(title)
+    plt.grid(True, which="both", alpha=0.3)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(RESULTS / output_name, dpi=180)
+    plt.close()
+
+
 def plot_epsilon_tradeoff(rows, plt):
     data = latest_by_walks(rows, "epsilon")
     if not data:
@@ -150,6 +174,40 @@ def plot_epsilon_tradeoff(rows, plt):
     plt.title("Epsilon accuracy/runtime tradeoff")
     fig.tight_layout()
     plt.savefig(RESULTS / "epsilon_tradeoff.png", dpi=180)
+    plt.close()
+
+
+def plot_named_epsilon_tradeoff(rows, plt, benchmark_name, output_name, title):
+    filtered = [r for r in rows if r.get("benchmark_name") == benchmark_name]
+    if not filtered:
+        print(f"No {benchmark_name} rows found; skipping {output_name}")
+        return
+
+    by_eps = {}
+    for row in filtered:
+        by_eps[float(row["epsilon"])] = row
+    data = [by_eps[k] for k in sorted(by_eps, reverse=True)]
+
+    eps = [float(r["epsilon"]) for r in data]
+    rmse = [float(r["rmse"]) for r in data]
+    steps = [float(r["mean_steps"]) for r in data]
+
+    fig, ax1 = plt.subplots(figsize=(6.5, 4.5))
+    ax1.set_xscale("log")
+    ax1.plot(eps, rmse, marker="o", color="tab:blue", label="RMSE")
+    ax1.set_xlabel("epsilon")
+    ax1.set_ylabel("RMSE", color="tab:blue")
+    ax1.tick_params(axis="y", labelcolor="tab:blue")
+    ax1.grid(True, which="both", alpha=0.3)
+
+    ax2 = ax1.twinx()
+    ax2.plot(eps, steps, marker="s", color="tab:orange", label="mean steps")
+    ax2.set_ylabel("mean steps", color="tab:orange")
+    ax2.tick_params(axis="y", labelcolor="tab:orange")
+
+    plt.title(title)
+    fig.tight_layout()
+    plt.savefig(RESULTS / output_name, dpi=180)
     plt.close()
 
 
@@ -256,6 +314,20 @@ def main():
     plt = require_matplotlib()
     plot_rmse_vs_walks(rows, plt)
     plot_epsilon_tradeoff(rows, plt)
+    plot_named_rmse_vs_walks(
+        rows,
+        plt,
+        "neumann_convergence",
+        "neumann_rmse_vs_walks.png",
+        "Mixed Neumann convergence",
+    )
+    plot_named_epsilon_tradeoff(
+        rows,
+        plt,
+        "neumann_epsilon",
+        "neumann_epsilon_tradeoff.png",
+        "Mixed Neumann epsilon tradeoff",
+    )
     plot_adaptive_vs_fixed(rows, plt)
     plot_thread_speedup(rows, plt)
     plot_bvh_vs_bruteforce(geometry_rows, plt)

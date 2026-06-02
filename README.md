@@ -116,6 +116,7 @@ Run individual benchmark modes:
 .\build\wost.exe --mode epsilon --queries 20000 --threads 8
 .\build\wost.exe --mode grid --grid 48 --threads 8
 .\build\wost.exe --mode adaptive --queries 20000 --grid 48 --threads 8
+.\build\wost.exe --mode neumann --queries 100 --grid 8 --threads 8 --cube 0.22
 .\build\wost.exe --mode threads --queries 5000 --threads 8
 .\build\wost.exe --mode geometry --queries 1000 --threads 8
 ```
@@ -151,6 +152,8 @@ This writes:
 results/rmse_vs_walks.png
 results/epsilon_tradeoff.png
 results/adaptive_vs_fixed.png
+results/neumann_rmse_vs_walks.png
+results/neumann_epsilon_tradeoff.png
 results/thread_speedup.png
 results/bvh_vs_bruteforce.png
 ```
@@ -180,4 +183,10 @@ For the high-resolution Bunny workflow, including the `obj/Bunny.obj` commands a
 
 ```text
 docs/BUNNY_BENCHMARK_WORKFLOW.md
+```
+
+For the mixed Neumann boundary benchmark and results, see:
+
+```text
+docs/NEUMANN_BENCHMARK_REPORT.md
 ```

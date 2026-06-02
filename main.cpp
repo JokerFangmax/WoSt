@@ -69,6 +69,14 @@ struct GeometryMetrics {
     double checksum = 0.0;
 };
 
+struct BoundarySetup {
+    DirichletFn gInner;
+    DirichletFn gOuter;
+    NeumannPredFn isInnerNeumann;
+    NeumannFn hInner;
+    SourceFn source;
+};
+
 std::string CsvEscape(const std::string& s) {
     if (s.find_first_of(",\"\n\r") == std::string::npos) return s;
     std::string out = "\"";
@@ -95,6 +103,29 @@ uint32_t SeedFor(uint64_t baseSeed, uint64_t index, uint64_t stream = 0) {
 
 float LinearExact(const vec3& p) {
     return p.x + p.y + p.z;
+}
+
+BoundarySetup MakeLinearDirichletProblem() {
+    BoundarySetup b;
+    b.gInner = [](const BoundaryPoint& bp) { return LinearExact(bp.position); };
+    b.gOuter = [](const BoundaryPoint& bp) { return LinearExact(bp.position); };
+    b.isInnerNeumann = [](const BoundaryPoint&) { return false; };
+    b.hInner = [](const BoundaryPoint&) { return 0.0f; };
+    b.source = [](const vec3&) { return 0.0f; };
+    return b;
+}
+
+BoundarySetup MakeLinearInnerNeumannProblem() {
+    BoundarySetup b;
+    b.gInner = [](const BoundaryPoint& bp) { return LinearExact(bp.position); };
+    b.gOuter = [](const BoundaryPoint& bp) { return LinearExact(bp.position); };
+    b.isInnerNeumann = [](const BoundaryPoint&) { return true; };
+    b.hInner = [](const BoundaryPoint& bp) {
+        const vec3 grad(1.0f, 1.0f, 1.0f);
+        return dot3(grad, bp.normal);
+    };
+    b.source = [](const vec3&) { return 0.0f; };
+    return b;
 }
 
 vec3 RandomPointInCube(FastRNG& rng, float L) {
@@ -144,7 +175,7 @@ std::string ResolveObjPath(const std::string& requested) {
 
 void PrintUsage(const char* exe) {
     std::cout
-        << "Usage: " << exe << " [--mode convergence|epsilon|grid|adaptive|threads|geometry|all] "
+        << "Usage: " << exe << " [--mode convergence|epsilon|grid|adaptive|neumann|threads|geometry|all] "
         << "[--obj path] [--queries N] [--grid N] [--threads N] [--seed N] [--cube L]\n";
 }
 
@@ -361,17 +392,13 @@ BenchmarkMetrics RunPointBenchmark(const WoStKernel& kernel,
                                    const WoStParams& params,
                                    uint64_t baseSeed,
                                    float L,
-                                   bool writePointCloud = false) {
+                                   const BoundarySetup& boundary,
+                                   bool writePointCloud = false,
+                                   const std::string& pointCloudPath = "results/linear_dirichlet_pointcloud.vtk") {
     const auto queries = GenerateQueryPoints(numQueryPoints, L, baseSeed);
     std::vector<PointSolution> solutions(numQueryPoints);
     std::vector<char> validFlags(numQueryPoints, 0);
     std::vector<char> divergedFlags(numQueryPoints, 0);
-
-    const DirichletFn gInner = [](const BoundaryPoint& bp) { return LinearExact(bp.position); };
-    const DirichletFn gOuter = [](const BoundaryPoint& bp) { return LinearExact(bp.position); };
-    const NeumannPredFn noNeumann = [](const BoundaryPoint&) { return false; };
-    const NeumannFn zeroNeumann = [](const BoundaryPoint&) { return 0.0f; };
-    const SourceFn zeroSource = [](const vec3&) { return 0.0f; };
 
     const auto t0 = std::chrono::high_resolution_clock::now();
 
@@ -382,7 +409,13 @@ BenchmarkMetrics RunPointBenchmark(const WoStKernel& kernel,
 
         WoStParams pointParams = params;
         pointParams.seed = SeedFor(baseSeed, static_cast<uint64_t>(i), 0xBEEFu);
-        WalkResult r = kernel.SolvePoisson(point, gInner, noNeumann, zeroNeumann, gOuter, zeroSource, pointParams);
+        WalkResult r = kernel.SolvePoisson(point,
+                                           boundary.gInner,
+                                           boundary.isInnerNeumann,
+                                           boundary.hInner,
+                                           boundary.gOuter,
+                                           boundary.source,
+                                           pointParams);
 
         PointSolution ps;
         ps.pos = point;
@@ -411,8 +444,8 @@ BenchmarkMetrics RunPointBenchmark(const WoStKernel& kernel,
         for (int i = 0; i < numQueryPoints; ++i) {
             if (validFlags[i]) compact.push_back(solutions[i]);
         }
-        if (WriteVTKPointCloud("results/linear_dirichlet_pointcloud.vtk", compact, true)) {
-            std::cout << "Wrote results/linear_dirichlet_pointcloud.vtk\n";
+        if (WriteVTKPointCloud(pointCloudPath, compact, true)) {
+            std::cout << "Wrote " << pointCloudPath << "\n";
         }
     }
 
@@ -426,6 +459,7 @@ BenchmarkMetrics RunGridBenchmark(const WoStKernel& kernel,
                                   const WoStParams& params,
                                   uint64_t baseSeed,
                                   float L,
+                                  const BoundarySetup& boundary,
                                   const std::string& vtkPath) {
     GridInfo gi;
     gi.nx = gridRes;
@@ -444,12 +478,6 @@ BenchmarkMetrics RunGridBenchmark(const WoStKernel& kernel,
     std::vector<char> validFlags(totalPoints, 0);
     std::vector<char> divergedFlags(totalPoints, 0);
 
-    const DirichletFn gInner = [](const BoundaryPoint& bp) { return LinearExact(bp.position); };
-    const DirichletFn gOuter = [](const BoundaryPoint& bp) { return LinearExact(bp.position); };
-    const NeumannPredFn noNeumann = [](const BoundaryPoint&) { return false; };
-    const NeumannFn zeroNeumann = [](const BoundaryPoint&) { return 0.0f; };
-    const SourceFn zeroSource = [](const vec3&) { return 0.0f; };
-
     const auto t0 = std::chrono::high_resolution_clock::now();
 
 #pragma omp parallel for schedule(dynamic, 32)
@@ -467,7 +495,13 @@ BenchmarkMetrics RunGridBenchmark(const WoStKernel& kernel,
         if (kernel.InDomain(point)) {
             WoStParams pointParams = params;
             pointParams.seed = SeedFor(baseSeed, static_cast<uint64_t>(idx), 0xC0FFEEu);
-            WalkResult r = kernel.SolvePoisson(point, gInner, noNeumann, zeroNeumann, gOuter, zeroSource, pointParams);
+            WalkResult r = kernel.SolvePoisson(point,
+                                               boundary.gInner,
+                                               boundary.isInnerNeumann,
+                                               boundary.hInner,
+                                               boundary.gOuter,
+                                               boundary.source,
+                                               pointParams);
 
             gp.value = r.value;
             gp.stdErr = r.stdErr;
@@ -618,22 +652,57 @@ GeometryMetrics RunGeometryDistanceBenchmark(const WoStGeometryBackend& geometry
 }
 
 void RunConvergence(const WoStKernel& kernel, const CliOptions& opts, const std::string& meshName) {
+    const BoundarySetup boundary = MakeLinearDirichletProblem();
     for (int M : {16, 64, 256, 1024}) {
         WoStParams p = BaseLinearParams();
         p.numSamples = M;
         RunPointBenchmark(kernel, meshName, "convergence", opts.numQueryPoints, p,
-                          opts.seed ^ 0xC011CEu, opts.cubeHalfExtent, M == 256);
+                          opts.seed ^ 0xC011CEu, opts.cubeHalfExtent, boundary, M == 256,
+                          "results/linear_dirichlet_pointcloud.vtk");
     }
 }
 
 void RunEpsilonSweep(const WoStKernel& kernel, const CliOptions& opts, const std::string& meshName) {
+    const BoundarySetup boundary = MakeLinearDirichletProblem();
     for (float eps : {1e-2f, 1e-3f, 1e-4f, 1e-5f}) {
         WoStParams p = BaseLinearParams();
         p.numSamples = 256;
         p.eps = eps;
         RunPointBenchmark(kernel, meshName, "epsilon", opts.numQueryPoints, p,
-                          opts.seed ^ 0xE95110u, opts.cubeHalfExtent);
+                          opts.seed ^ 0xE95110u, opts.cubeHalfExtent, boundary);
     }
+}
+
+void RunNeumannBenchmark(const WoStKernel& kernel, const CliOptions& opts, const std::string& meshName) {
+    namespace fs = std::filesystem;
+    fs::create_directories("results");
+
+    const BoundarySetup boundary = MakeLinearInnerNeumannProblem();
+
+    for (int M : {16, 64, 256, 1024}) {
+        WoStParams p = BaseLinearParams();
+        p.numSamples = M;
+        p.maxSteps = 2048;
+        RunPointBenchmark(kernel, meshName, "neumann_convergence", opts.numQueryPoints, p,
+                          opts.seed ^ 0xA11CE2u, opts.cubeHalfExtent, boundary, M == 256,
+                          "results/neumann_mixed_pointcloud.vtk");
+    }
+
+    for (float eps : {1e-2f, 1e-3f, 1e-4f, 1e-5f}) {
+        WoStParams p = BaseLinearParams();
+        p.numSamples = 256;
+        p.maxSteps = 2048;
+        p.eps = eps;
+        RunPointBenchmark(kernel, meshName, "neumann_epsilon", opts.numQueryPoints, p,
+                          opts.seed ^ 0x0E0001u, opts.cubeHalfExtent, boundary);
+    }
+
+    WoStParams gridParams = BaseLinearParams();
+    gridParams.numSamples = 256;
+    gridParams.maxSteps = 2048;
+    RunGridBenchmark(kernel, meshName, "neumann_mixed_grid", opts.gridRes, gridParams,
+                     opts.seed ^ 0x0E006Du, opts.cubeHalfExtent, boundary,
+                     "results/neumann_mixed_grid.vtk");
 }
 
 void RunGrid(const WoStKernel& kernel, const CliOptions& opts, const std::string& meshName) {
@@ -641,8 +710,9 @@ void RunGrid(const WoStKernel& kernel, const CliOptions& opts, const std::string
     fs::create_directories("results");
     WoStParams p = BaseLinearParams();
     p.numSamples = 256;
+    const BoundarySetup boundary = MakeLinearDirichletProblem();
     RunGridBenchmark(kernel, meshName, "linear_dirichlet_grid", opts.gridRes, p, opts.seed,
-                     opts.cubeHalfExtent, "results/linear_dirichlet_grid.vtk");
+                     opts.cubeHalfExtent, boundary, "results/linear_dirichlet_grid.vtk");
 }
 
 void RunAdaptive(const WoStKernel& kernel, const CliOptions& opts, const std::string& meshName) {
@@ -651,8 +721,9 @@ void RunAdaptive(const WoStKernel& kernel, const CliOptions& opts, const std::st
 
     WoStParams fixed = BaseLinearParams();
     fixed.numSamples = 1024;
+    const BoundarySetup boundary = MakeLinearDirichletProblem();
     RunPointBenchmark(kernel, meshName, "adaptive_fixed", opts.numQueryPoints, fixed,
-                      opts.seed ^ 0xADA9715u, opts.cubeHalfExtent);
+                      opts.seed ^ 0xADA9715u, opts.cubeHalfExtent, boundary);
 
     WoStParams adaptive = BaseLinearParams();
     adaptive.adaptiveSampling = true;
@@ -662,10 +733,10 @@ void RunAdaptive(const WoStKernel& kernel, const CliOptions& opts, const std::st
     adaptive.batchSize = 32;
     adaptive.targetStdErr = 1e-3f;
     RunPointBenchmark(kernel, meshName, "adaptive", opts.numQueryPoints, adaptive,
-                      opts.seed ^ 0xADA9715u, opts.cubeHalfExtent);
+                      opts.seed ^ 0xADA9715u, opts.cubeHalfExtent, boundary);
 
     RunGridBenchmark(kernel, meshName, "adaptive_grid", opts.gridRes, adaptive,
-                     opts.seed ^ 0x6A1Du, opts.cubeHalfExtent, "results/adaptive_sampling_grid.vtk");
+                     opts.seed ^ 0x6A1Du, opts.cubeHalfExtent, boundary, "results/adaptive_sampling_grid.vtk");
 }
 
 std::vector<int> ThreadSweepValues(int requestedMaxThreads) {
@@ -684,13 +755,14 @@ std::vector<int> ThreadSweepValues(int requestedMaxThreads) {
 void RunThreadScaling(const WoStKernel& kernel, const CliOptions& opts, const std::string& meshName) {
     WoStParams p = BaseLinearParams();
     p.numSamples = 256;
+    const BoundarySetup boundary = MakeLinearDirichletProblem();
 
     for (int threads : ThreadSweepValues(opts.numThreads)) {
 #ifdef _OPENMP
         omp_set_num_threads(threads);
 #endif
         RunPointBenchmark(kernel, meshName, "thread_scaling", opts.numQueryPoints, p,
-                          opts.seed ^ 0x71EADu, opts.cubeHalfExtent);
+                          opts.seed ^ 0x71EADu, opts.cubeHalfExtent, boundary);
     }
 }
 
@@ -738,7 +810,8 @@ int main(int argc, char** argv) {
 
     const std::string mode = opts.mode;
     if (mode != "convergence" && mode != "epsilon" && mode != "grid" &&
-        mode != "adaptive" && mode != "threads" && mode != "geometry" && mode != "all") {
+        mode != "adaptive" && mode != "neumann" && mode != "threads" &&
+        mode != "geometry" && mode != "all") {
         std::cerr << "Unknown mode: " << mode << "\n";
         PrintUsage(argv[0]);
         return 1;
@@ -769,6 +842,9 @@ int main(int argc, char** argv) {
     }
     if (mode == "adaptive" || mode == "all") {
         RunAdaptive(kernel, opts, opts.objFile);
+    }
+    if (mode == "neumann" || mode == "all") {
+        RunNeumannBenchmark(kernel, opts, opts.objFile);
     }
     if (mode == "threads" || mode == "all") {
         RunThreadScaling(kernel, opts, opts.objFile);
