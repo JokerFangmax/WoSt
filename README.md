@@ -179,6 +179,42 @@ Open these files in ParaView with `File > Open`, then color by one of the scalar
 
 The adaptive sampling benchmark is a small innovation over fixed sampling. Instead of assigning the same number of random walks to every point, the solver estimates standard error online and stops early in low-variance regions, up to the configured maximum sample count.
 
+## Optimization experiments
+
+The optimized C++ solver also has experiment modes for the project report:
+
+```powershell
+.\build\Release\wost.exe --mode adaptive_compare --queries 1000 --threads 8 --max-samples 512 --min-samples 64 --batch-size 32 --target-rse 0.05 --rse-eps 0.001
+.\build\Release\wost.exe --mode antithetic --queries 1000 --threads 8 --max-samples 512
+.\build\Release\wost.exe --mode lazy --queries 1000 --threads 8 --max-samples 512
+.\build\Release\wost.exe --mode epsilon_extrapolation --queries 1000 --threads 8 --max-samples 512
+.\build\Release\wost.exe --mode neumann_sanity --queries 1000 --threads 8 --max-samples 512
+```
+
+Run the full batch and generate figures/report:
+
+```powershell
+.\build\Release\wost.exe --mode optimization --queries 1000 --threads 8 --max-samples 512 --min-samples 64 --batch-size 32 --target-rse 0.05 --rse-eps 0.001
+python .\scripts\plot_optimization_experiments.py
+```
+
+or, if script execution is enabled:
+
+```powershell
+.\scripts\run_optimization_experiments.ps1
+```
+
+Outputs are written to:
+
+```text
+experiments/optimization_summary.csv
+experiments/optimization_points.csv
+experiments/optimization_report.md
+experiments/figures/
+```
+
+Common Random Numbers are used in these comparisons. Each repeated experiment has a global experiment seed, query points are generated from that seed, and each query point receives `SeedFor(experiment_seed, point_index, stream)`. Methods within the same comparison reuse the same experiment seed and point-index stream, so fixed/adaptive, normal/antithetic, full/lazy, and epsilon/epsilon-half comparisons are paired fairly.
+
 For the high-resolution Bunny workflow, including the `obj/Bunny.obj` commands and expected outputs, see:
 
 ```text

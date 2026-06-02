@@ -1,6 +1,7 @@
 #include "WoStKernel.hpp"
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 namespace wost {
 
@@ -20,9 +21,6 @@ BoundaryPoint WoStKernel::makeCubeBP(const vec3& origin, const vec3& dir, float 
     return bp;
 }
 
-// ===========================================================================
-// (1) SolveLaplace -> 直接复用 SolvePoisson 降低维护成本
-// ===========================================================================
 WalkResult WoStKernel::SolveLaplace(const vec3&          x0,
                                     const DirichletFn&   g_inner,
                                     const NeumannPredFn& is_inner_neumann,
@@ -34,9 +32,6 @@ WalkResult WoStKernel::SolveLaplace(const vec3&          x0,
                         [](const vec3& x) { (void)x; return 0.f; }, params);
 }
 
-// ===========================================================================
-// (2) SolvePoisson
-// ===========================================================================
 WalkResult WoStKernel::SolvePoisson(const vec3&          x0,
                                     const DirichletFn&   g_inner,
                                     const NeumannPredFn& is_inner_neumann,
@@ -45,9 +40,20 @@ WalkResult WoStKernel::SolvePoisson(const vec3&          x0,
                                     const SourceFn&      f,
                                     const WoStParams&    params) const
 {
+    struct SingleWalkResult {
+        float value = 0.f;
+        int steps = 0;
+        bool diverged = false;
+        uint64_t starQueries = 0;
+        uint64_t fastOnlyStarQueries = 0;
+        uint64_t exactStarQueries = 0;
+    };
+
     WalkResult result;
     double sumV = 0.0, sumV2 = 0.0;
     int sumSteps = 0;
+    int samplesUsed = 0;
+    int estimatorCount = 0;
     FastRNG rng(static_cast<uint32_t>(params.seed));
 
     const int fixedSamples = std::max(1, params.numSamples);
@@ -55,152 +61,191 @@ WalkResult WoStKernel::SolvePoisson(const vec3&          x0,
     const int sampleLimit = params.adaptiveSampling ? adaptiveMaxSamples : fixedSamples;
     const int minSamples = std::min(sampleLimit, std::max(1, params.minSamples));
     const int batchSize = std::max(1, params.batchSize);
-    int samplesUsed = 0;
 
-    for (int s = 0; s < sampleLimit; ++s) {
-        vec3  x    = x0;
-        float acc  = 0.f;
-        int   steps = 0;
-        bool  done  = false;
+    auto drawDirection = [&](std::vector<vec3>* tape, size_t& cursor, int sign) -> vec3 {
+        vec3 dir;
+        if (tape) {
+            if (cursor >= tape->size()) tape->push_back(sampleUnitSphere(rng));
+            dir = (*tape)[cursor++];
+        } else {
+            dir = sampleUnitSphere(rng);
+        }
+        return sign < 0 ? scale(dir, -1.f) : dir;
+    };
+
+    auto runSingleWalk = [&](std::vector<vec3>* tape, int sign) -> SingleWalkResult {
+        SingleWalkResult wr;
+        size_t tapeCursor = 0;
+        vec3 x = x0;
+        float acc = 0.f;
+        bool done = false;
 
         for (int step = 0; step < params.maxSteps; ++step) {
-            ++steps;
-            float R_inner_approx = inner_.FastBoundaryDistance(x);
-            float R_outer        = outer_.FastStarRadius(x);
-            float R_approx       = std::min(R_inner_approx, R_outer);
+            ++wr.steps;
+            ++wr.starQueries;
 
-            if (R_approx < params.eps * 2.0f) {
-                // ── 近边界：精确计算 star radius ──────────────────────────
-                BoundaryPoint bndBP_inner, silBP_inner;
-                float R_inner = inner_.StarRadius(x, bndBP_inner, silBP_inner);
-                float R       = std::min(R_inner, R_outer);
-                bool  outerCloser = (R_outer <= R_inner);
+            const float R_outer = outer_.FastStarRadius(x);
+            BoundaryPoint bndBP_inner, silBP_inner;
+            float R_inner = 0.f;
+            float R = 0.f;
+            bool refined = false;
 
-                float distToActualBoundary = outerCloser ? R_outer : bndBP_inner.dist;
+            const float fastInnerDist = inner_.FastBoundaryDistance(x);
+            const float fastRadius = std::min(fastInnerDist, R_outer);
+            const float refineDistance = params.lazyRefineDistance > 0.f
+                ? params.lazyRefineDistance
+                : params.eps * 2.0f;
+            const bool ratioSuspicious = params.lazySuspiciousRatio > 0.f &&
+                R_outer > 1e-12f &&
+                fastInnerDist <= params.lazySuspiciousRatio * R_outer;
+            const bool shouldRefine = !params.useLazyStarRefinement ||
+                fastRadius < refineDistance || ratioSuspicious;
 
-                if (distToActualBoundary < params.eps) {
-                    if (outerCloser) {
-                        BoundaryPoint bndBP_outer;
-                        outer_.ClosestPoint(x, bndBP_outer);
-                        acc += g_outer(bndBP_outer);
-                        done = true;
-                        break;
-                    } else {
-                        if (is_inner_neumann(bndBP_inner)) {
-                            // 🚀 修复核心：定义一个宏观跳跃距离，彻底脱离边界引力
-                            float jump_dist = std::max(params.eps * 100.0f, R_outer * 0.05f);
+            if (shouldRefine) {
+                R_inner = inner_.StarRadius(x, bndBP_inner, silBP_inner);
+                R = std::min(R_inner, R_outer);
+                refined = true;
+                ++wr.exactStarQueries;
+            } else {
+                R_inner = fastInnerDist;
+                R = fastRadius;
+                bndBP_inner.dist = fastInnerDist;
+                ++wr.fastOnlyStarQueries;
+            }
 
-                            // 差分近似积分（注意乘以的是跳跃距�?jump_dist，而不�?eps�?
-                            acc += h_inner(bndBP_inner) * jump_dist;
+            const bool outerCloser = (R_outer <= R_inner);
+            float distToActualBoundary = outerCloser ? R_outer : bndBP_inner.dist;
 
-                            // 沿法线推回域内一个宏观距�?
-                            x = madd(bndBP_inner.position, bndBP_inner.normal, jump_dist);
-                        } else {
-                            // Dirichlet 边界直接吸收终止
-                            acc += g_inner(bndBP_inner);
-                            done = true;
-                            break;
-                        }
-                    }
+            if (distToActualBoundary < params.eps) {
+                if (outerCloser) {
+                    BoundaryPoint bndBP_outer;
+                    outer_.ClosestPoint(x, bndBP_outer);
+                    acc += g_outer(bndBP_outer);
+                    done = true;
+                    break;
                 }
 
-                if (!done) {
-                    vec3     dir = sampleUnitSphere(rng);
-                    float    t_inner;
-                    vec3     n_inner;
-                    uint32_t prim_inner;
-                    bool hit = inner_.IntersectRay(x, dir, R, t_inner, n_inner, prim_inner);
+                if (!refined) {
+                    inner_.ClosestPoint(x, bndBP_inner);
+                }
 
-                    // �?Bug 2 修正：源项体积积分始终使用完整控制球半径 R
-                    acc -= (R * R / 6.f) * f(x);
+                if (is_inner_neumann(bndBP_inner)) {
+                    const float jumpDist = std::max(params.eps * 100.0f, R_outer * 0.05f);
+                    acc += h_inner(bndBP_inner) * jumpDist;
+                    x = madd(bndBP_inner.position, bndBP_inner.normal, jumpDist);
+                } else {
+                    acc += g_inner(bndBP_inner);
+                    done = true;
+                    break;
+                }
+            }
 
-                    if (hit) {
-                        BoundaryPoint bp = makeBP(x, dir, t_inner, n_inner, prim_inner);
-                        if (is_inner_neumann(bp)) {
-                            // �?Bug 1 修正：无�?Neumann 积分面积元权�?
-                            float cosTheta = std::max(1e-4f, std::abs(dot3(dir, bp.normal)));
-                            acc += h_inner(bp) * t_inner * (1.0f - t_inner / R) / cosTheta;
+            if (done) break;
 
-                            // 🚀 修复核心：计算反射方向，并走完剩余的射线距离
-                            vec3 reflected_dir = reflect(dir, bp.normal);
-                            float remaining_dist = R - t_inner;
+            const vec3 dir = drawDirection(tape, tapeCursor, sign);
+            float t_inner = 0.f;
+            vec3 n_inner;
+            uint32_t prim_inner = ~0u;
+            const bool hit = inner_.IntersectRay(x, dir, R, t_inner, n_inner, prim_inner);
 
-                            // 将粒子移动到反射后的位置，并沿法线加�?eps 防止浮点误差导致的自�?
-                            vec3 new_pos = madd(bp.position, reflected_dir, remaining_dist);
-                            x = madd(new_pos, bp.normal, params.eps);
-                        } else {
-                            acc += g_inner(bp);
-                            done = true;
-                            break;
-                        }
-                    } else {
-                        x = madd(x, dir, R);
-                    }
+            acc -= (R * R / 6.f) * f(x);
+
+            if (hit) {
+                BoundaryPoint bp = makeBP(x, dir, t_inner, n_inner, prim_inner);
+                if (is_inner_neumann(bp)) {
+                    const float cosTheta = std::max(1e-4f, std::abs(dot3(dir, bp.normal)));
+                    acc += h_inner(bp) * t_inner * (1.0f - t_inner / R) / cosTheta;
+
+                    const vec3 reflectedDir = reflect(dir, bp.normal);
+                    const float remainingDist = R - t_inner;
+                    const vec3 newPos = madd(bp.position, reflectedDir, remainingDist);
+                    x = madd(newPos, bp.normal, params.eps);
+                } else {
+                    acc += g_inner(bp);
+                    done = true;
+                    break;
                 }
             } else {
-                // ── 远离边界：使用快速近�?star radius ───────────────────────
-                float R   = R_approx;
-                vec3  dir = sampleUnitSphere(rng);
-                float    t_inner;
-                vec3     n_inner;
-                uint32_t prim_inner;
-                bool hit = inner_.IntersectRay(x, dir, R, t_inner, n_inner, prim_inner);
-
-                // �?Bug 2 修正：源项体积积分始终使用完整控制球半径 R
-                acc -= (R * R / 6.f) * f(x);
-
-                if (hit) {
-                    BoundaryPoint bp = makeBP(x, dir, t_inner, n_inner, prim_inner);
-                    if (is_inner_neumann(bp)) {
-                        // �?Bug 1 修正：无�?Neumann 积分面积元权�?
-                        float cosTheta = std::max(1e-4f, std::abs(dot3(dir, bp.normal)));
-                        acc += h_inner(bp) * t_inner * (1.0f - t_inner / R) / cosTheta;
-
-                        // 🚀 修复核心：计算反射方向，并走完剩余的射线距离
-                        vec3 reflected_dir = reflect(dir, bp.normal);
-                        float remaining_dist = R - t_inner;
-
-                        // 将粒子移动到反射后的位置，并沿法线加�?eps 防止浮点误差导致的自�?
-                        vec3 new_pos = madd(bp.position, reflected_dir, remaining_dist);
-                        x = madd(new_pos, bp.normal, params.eps);
-                    } else {
-                        acc += g_inner(bp);
-                        done = true;
-                        break;
-                    }
-                } else {
-                    x = madd(x, dir, R);
-                }
+                x = madd(x, dir, R);
             }
-        } // step loop
+        }
 
-        // 步数超限时的保底处理
         if (!done) {
             BoundaryPoint bp_i, bp_o;
-            float d_i = inner_.ClosestPoint(x, bp_i);
-            float d_o = outer_.ClosestPoint(x, bp_o);
+            const float d_i = inner_.ClosestPoint(x, bp_i);
+            const float d_o = outer_.ClosestPoint(x, bp_o);
             acc += (d_o <= d_i) ? g_outer(bp_o) : g_inner(bp_i);
-            result.anyDiverged = true;
+            wr.diverged = true;
         }
 
-        sumV     += acc;
-        sumV2    += static_cast<double>(acc) * acc;
+        wr.value = acc;
+        return wr;
+    };
+
+    auto addEstimator = [&](float value, int steps, int walks,
+                            bool diverged, uint64_t starQueries,
+                            uint64_t fastOnlyStarQueries,
+                            uint64_t exactStarQueries) {
+        sumV += value;
+        sumV2 += static_cast<double>(value) * value;
         sumSteps += steps;
-        samplesUsed = s + 1;
+        samplesUsed += walks;
+        ++estimatorCount;
+        result.anyDiverged = result.anyDiverged || diverged;
+        result.starQueries += starQueries;
+        result.fastOnlyStarQueries += fastOnlyStarQueries;
+        result.exactStarQueries += exactStarQueries;
+    };
 
-        if (params.adaptiveSampling &&
-            samplesUsed >= minSamples &&
-            (samplesUsed % batchSize == 0 || samplesUsed == sampleLimit)) {
-            const double mean = sumV / samplesUsed;
-            const double var = std::max(0.0, sumV2 / samplesUsed - mean * mean);
-            const double stdErr = std::sqrt(var) / std::sqrt(static_cast<double>(samplesUsed));
-            if (stdErr < static_cast<double>(params.targetStdErr)) {
-                break;
-            }
+    auto addSample = [&](const SingleWalkResult& wr) {
+        addEstimator(wr.value, wr.steps, 1, wr.diverged,
+                     wr.starQueries, wr.fastOnlyStarQueries, wr.exactStarQueries);
+    };
+
+    auto addAntitheticPair = [&](const SingleWalkResult& a, const SingleWalkResult& b) {
+        addEstimator(0.5f * (a.value + b.value),
+                     a.steps + b.steps,
+                     2,
+                     a.diverged || b.diverged,
+                     a.starQueries + b.starQueries,
+                     a.fastOnlyStarQueries + b.fastOnlyStarQueries,
+                     a.exactStarQueries + b.exactStarQueries);
+    };
+
+    auto adaptiveStopReached = [&]() -> bool {
+        if (!params.adaptiveSampling || samplesUsed < minSamples || estimatorCount <= 0) return false;
+        if (samplesUsed % batchSize != 0 && samplesUsed != sampleLimit) return false;
+
+        const double mean = sumV / estimatorCount;
+        const double var = std::max(0.0, sumV2 / estimatorCount - mean * mean);
+        const double stdErr = std::sqrt(var) / std::sqrt(static_cast<double>(estimatorCount));
+        if (params.useRelativeStdErr) {
+            const double denom = std::max(std::abs(mean), static_cast<double>(params.rseEps));
+            const double rse = stdErr / denom;
+            return rse < static_cast<double>(params.targetRSE);
         }
+        return stdErr < static_cast<double>(params.targetStdErr);
+    };
+
+    while (samplesUsed < sampleLimit) {
+        if (params.useAntitheticSampling && samplesUsed + 1 < sampleLimit) {
+            std::vector<vec3> directionTape;
+            directionTape.reserve(static_cast<size_t>(std::min(params.maxSteps, 64)));
+            const SingleWalkResult a = runSingleWalk(&directionTape, +1);
+            const SingleWalkResult b = runSingleWalk(&directionTape, -1);
+            addAntitheticPair(a, b);
+        } else {
+            addSample(runSingleWalk(nullptr, +1));
+        }
+
+        if (adaptiveStopReached()) break;
     }
 
-    finalise(result, sumV, sumV2, sumSteps, samplesUsed);
+    finalise(result, sumV, sumV2, sumSteps, estimatorCount);
+    if (samplesUsed > 0) {
+        result.meanSteps = static_cast<float>(sumSteps) / static_cast<float>(samplesUsed);
+        result.samplesUsed = samplesUsed;
+    }
     return result;
 }
 

@@ -1,0 +1,2 @@
+benchmark_name,mesh_name,backend_name,triangle_count,num_queries,num_threads,elapsed_seconds,queries_per_second,checksum
+geometry_distance,C:\THU\homework\zombie\obj\Bunny.obj,zombie_fcpw_bvh,70580,500,python_loop,0.001881200005300343,265787.7942755866,21.7476515895396

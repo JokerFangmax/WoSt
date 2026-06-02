@@ -34,6 +34,13 @@ struct CliOptions {
     int numThreads = 0;
     uint64_t seed = 12345;
     float cubeHalfExtent = 1.0f;
+    int minSamples = 64;
+    int maxSamples = 1024;
+    int batchSize = 32;
+    float targetRSE = 0.05f;
+    float rseEps = 1e-3f;
+    float lazyRefineDistance = 0.0f;
+    float lazySuspiciousRatio = 0.0f;
 };
 
 struct BenchmarkMetrics {
@@ -55,6 +62,37 @@ struct BenchmarkMetrics {
     double meanSteps = 0.0;
     int divergedCount = 0;
     double meanSamplesUsed = 0.0;
+};
+
+struct ExperimentMetrics {
+    std::string experimentName;
+    std::string methodName;
+    std::string meshName;
+    uint64_t seed = 0;
+    int numQueryPoints = 0;
+    int validPoints = 0;
+    int walksPerPoint = 0;
+    float epsilon = 0.f;
+    int minSamples = 0;
+    int maxSamples = 0;
+    int batchSize = 0;
+    float targetRSE = 0.f;
+    double elapsedSeconds = 0.0;
+    double rmse = 0.0;
+    double mae = 0.0;
+    double meanRelativeError = 0.0;
+    double meanStdError = 0.0;
+    double meanSampleVariance = 0.0;
+    double meanSamplesUsed = 0.0;
+    double medianSamplesUsed = 0.0;
+    int minSamplesUsed = 0;
+    int maxSamplesUsed = 0;
+    double meanSteps = 0.0;
+    int divergedCount = 0;
+    uint64_t starQueries = 0;
+    uint64_t fastOnlyStarQueries = 0;
+    uint64_t exactStarQueries = 0;
+    double refinementRatio = 0.0;
 };
 
 struct GeometryMetrics {
@@ -175,8 +213,11 @@ std::string ResolveObjPath(const std::string& requested) {
 
 void PrintUsage(const char* exe) {
     std::cout
-        << "Usage: " << exe << " [--mode convergence|epsilon|grid|adaptive|neumann|threads|geometry|all] "
-        << "[--obj path] [--queries N] [--grid N] [--threads N] [--seed N] [--cube L]\n";
+        << "Usage: " << exe << " [--mode convergence|epsilon|grid|adaptive|neumann|threads|geometry|"
+        << "adaptive_compare|antithetic|lazy|epsilon_extrapolation|neumann_sanity|optimization|all] "
+        << "[--obj path] [--queries N] [--grid N] [--threads N] [--seed N] [--cube L]\n"
+        << "Optimization knobs: [--min-samples N] [--max-samples N] [--batch-size N] "
+        << "[--target-rse X] [--rse-eps X] [--lazy-threshold X] [--lazy-ratio X]\n";
 }
 
 bool ParseArgs(int argc, char** argv, CliOptions& opts) {
@@ -221,6 +262,34 @@ bool ParseArgs(int argc, char** argv, CliOptions& opts) {
             const char* v = needValue(arg);
             if (!v) return false;
             opts.cubeHalfExtent = std::max(1e-4f, std::stof(v));
+        } else if (arg == "--min-samples") {
+            const char* v = needValue(arg);
+            if (!v) return false;
+            opts.minSamples = std::max(1, std::stoi(v));
+        } else if (arg == "--max-samples") {
+            const char* v = needValue(arg);
+            if (!v) return false;
+            opts.maxSamples = std::max(1, std::stoi(v));
+        } else if (arg == "--batch-size") {
+            const char* v = needValue(arg);
+            if (!v) return false;
+            opts.batchSize = std::max(1, std::stoi(v));
+        } else if (arg == "--target-rse") {
+            const char* v = needValue(arg);
+            if (!v) return false;
+            opts.targetRSE = std::max(1e-6f, std::stof(v));
+        } else if (arg == "--rse-eps") {
+            const char* v = needValue(arg);
+            if (!v) return false;
+            opts.rseEps = std::max(1e-12f, std::stof(v));
+        } else if (arg == "--lazy-threshold") {
+            const char* v = needValue(arg);
+            if (!v) return false;
+            opts.lazyRefineDistance = std::max(0.0f, std::stof(v));
+        } else if (arg == "--lazy-ratio") {
+            const char* v = needValue(arg);
+            if (!v) return false;
+            opts.lazySuspiciousRatio = std::max(0.0f, std::stof(v));
         } else {
             std::cerr << "Unknown argument: " << arg << "\n";
             PrintUsage(argv[0]);
@@ -295,6 +364,102 @@ void AppendGeometryCsv(const GeometryMetrics& m) {
         << std::setprecision(12) << m.elapsedSeconds << ','
         << m.queriesPerSecond << ','
         << m.checksum << '\n';
+}
+
+void AppendExperimentCsv(const ExperimentMetrics& m) {
+    namespace fs = std::filesystem;
+    fs::create_directories("experiments");
+    const fs::path csvPath = fs::path("experiments") / "optimization_summary.csv";
+    const bool writeHeader = !fs::exists(csvPath) || fs::file_size(csvPath) == 0;
+
+    std::ofstream out(csvPath, std::ios::app);
+    if (!out.is_open()) {
+        std::cerr << "Failed to open " << csvPath.string() << " for writing\n";
+        return;
+    }
+
+    if (writeHeader) {
+        out << "experiment,method,mesh,seed,num_query_points,valid_points,walks_per_point,"
+            << "epsilon,min_samples,max_samples,batch_size,target_rse,elapsed_seconds,"
+            << "rmse,mae,mean_relative_error,mean_std_error,mean_sample_variance,"
+            << "mean_samples_used,median_samples_used,min_samples_used,max_samples_used,"
+            << "mean_steps,diverged_count,star_queries,fast_only_star_queries,"
+            << "exact_star_queries,refinement_ratio\n";
+    }
+
+    out << CsvEscape(m.experimentName) << ','
+        << CsvEscape(m.methodName) << ','
+        << CsvEscape(m.meshName) << ','
+        << m.seed << ','
+        << m.numQueryPoints << ','
+        << m.validPoints << ','
+        << m.walksPerPoint << ','
+        << std::setprecision(9) << m.epsilon << ','
+        << m.minSamples << ','
+        << m.maxSamples << ','
+        << m.batchSize << ','
+        << m.targetRSE << ','
+        << std::setprecision(12) << m.elapsedSeconds << ','
+        << m.rmse << ','
+        << m.mae << ','
+        << m.meanRelativeError << ','
+        << m.meanStdError << ','
+        << m.meanSampleVariance << ','
+        << m.meanSamplesUsed << ','
+        << m.medianSamplesUsed << ','
+        << m.minSamplesUsed << ','
+        << m.maxSamplesUsed << ','
+        << m.meanSteps << ','
+        << m.divergedCount << ','
+        << m.starQueries << ','
+        << m.fastOnlyStarQueries << ','
+        << m.exactStarQueries << ','
+        << m.refinementRatio << '\n';
+}
+
+void AppendExperimentPointCsv(const std::string& experimentName,
+                              const std::string& methodName,
+                              uint64_t seed,
+                              const std::vector<PointSolution>& solutions,
+                              const std::vector<char>& validFlags) {
+    namespace fs = std::filesystem;
+    fs::create_directories("experiments");
+    const fs::path csvPath = fs::path("experiments") / "optimization_points.csv";
+    const bool writeHeader = !fs::exists(csvPath) || fs::file_size(csvPath) == 0;
+
+    std::ofstream out(csvPath, std::ios::app);
+    if (!out.is_open()) {
+        std::cerr << "Failed to open " << csvPath.string() << " for writing\n";
+        return;
+    }
+
+    if (writeHeader) {
+        out << "experiment,method,seed,point_index,x,y,z,value,exact,abs_error,"
+            << "std_error,sample_variance,samples_used,mean_steps,star_queries,"
+            << "fast_only_star_queries,exact_star_queries\n";
+    }
+
+    for (size_t i = 0; i < solutions.size(); ++i) {
+        if (!validFlags[i]) continue;
+        const auto& s = solutions[i];
+        out << CsvEscape(experimentName) << ','
+            << CsvEscape(methodName) << ','
+            << seed << ','
+            << i << ','
+            << std::setprecision(9) << s.pos.x << ','
+            << s.pos.y << ','
+            << s.pos.z << ','
+            << s.value << ','
+            << s.exact << ','
+            << std::abs(s.value - s.exact) << ','
+            << s.stdErr << ','
+            << s.sampleVariance << ','
+            << s.samplesUsed << ','
+            << s.meanSteps << ','
+            << s.starQueries << ','
+            << s.fastOnlyStarQueries << ','
+            << s.exactStarQueries << '\n';
+    }
 }
 
 void PrintMetrics(const BenchmarkMetrics& m) {
@@ -421,9 +586,13 @@ BenchmarkMetrics RunPointBenchmark(const WoStKernel& kernel,
         ps.pos = point;
         ps.value = r.value;
         ps.stdErr = r.stdErr;
+        ps.sampleVariance = r.sampleVariance;
         ps.meanSteps = r.meanSteps;
         ps.samplesUsed = r.samplesUsed;
         ps.exact = LinearExact(point);
+        ps.starQueries = r.starQueries;
+        ps.fastOnlyStarQueries = r.fastOnlyStarQueries;
+        ps.exactStarQueries = r.exactStarQueries;
         solutions[i] = ps;
         validFlags[i] = 1;
         divergedFlags[i] = r.anyDiverged ? 1 : 0;
@@ -448,6 +617,173 @@ BenchmarkMetrics RunPointBenchmark(const WoStKernel& kernel,
             std::cout << "Wrote " << pointCloudPath << "\n";
         }
     }
+
+    return metrics;
+}
+
+ExperimentMetrics AccumulateExperimentMetrics(const std::string& experimentName,
+                                              const std::string& methodName,
+                                              const std::string& meshName,
+                                              uint64_t seed,
+                                              int numQueryPoints,
+                                              const WoStParams& params,
+                                              double elapsedSeconds,
+                                              const std::vector<PointSolution>& solutions,
+                                              const std::vector<char>& validFlags,
+                                              const std::vector<char>& divergedFlags) {
+    ExperimentMetrics m;
+    m.experimentName = experimentName;
+    m.methodName = methodName;
+    m.meshName = meshName;
+    m.seed = seed;
+    m.numQueryPoints = numQueryPoints;
+    m.walksPerPoint = params.adaptiveSampling ? params.maxSamples : params.numSamples;
+    m.epsilon = params.eps;
+    m.minSamples = params.minSamples;
+    m.maxSamples = params.maxSamples;
+    m.batchSize = params.batchSize;
+    m.targetRSE = params.targetRSE;
+    m.elapsedSeconds = elapsedSeconds;
+
+    std::vector<int> sampleCounts;
+    double sumSq = 0.0;
+    double sumAbs = 0.0;
+    double sumRel = 0.0;
+    double sumStdErr = 0.0;
+    double sumVar = 0.0;
+    double sumSamples = 0.0;
+    double sumSteps = 0.0;
+
+    for (size_t i = 0; i < solutions.size(); ++i) {
+        if (!validFlags[i]) continue;
+        const PointSolution& s = solutions[i];
+        const double err = static_cast<double>(s.value) - static_cast<double>(s.exact);
+        const double absErr = std::abs(err);
+        sumSq += err * err;
+        sumAbs += absErr;
+        sumRel += absErr / std::max(std::abs(static_cast<double>(s.exact)), 1e-6);
+        sumStdErr += s.stdErr;
+        sumVar += s.sampleVariance;
+        sumSamples += s.samplesUsed;
+        sumSteps += s.meanSteps;
+        sampleCounts.push_back(s.samplesUsed);
+        ++m.validPoints;
+        if (divergedFlags[i]) ++m.divergedCount;
+        m.starQueries += s.starQueries;
+        m.fastOnlyStarQueries += s.fastOnlyStarQueries;
+        m.exactStarQueries += s.exactStarQueries;
+    }
+
+    if (m.validPoints > 0) {
+        const double invN = 1.0 / static_cast<double>(m.validPoints);
+        m.rmse = std::sqrt(sumSq * invN);
+        m.mae = sumAbs * invN;
+        m.meanRelativeError = sumRel * invN;
+        m.meanStdError = sumStdErr * invN;
+        m.meanSampleVariance = sumVar * invN;
+        m.meanSamplesUsed = sumSamples * invN;
+        m.meanSteps = sumSteps * invN;
+
+        std::sort(sampleCounts.begin(), sampleCounts.end());
+        m.minSamplesUsed = sampleCounts.front();
+        m.maxSamplesUsed = sampleCounts.back();
+        const size_t mid = sampleCounts.size() / 2;
+        m.medianSamplesUsed = sampleCounts.size() % 2
+            ? static_cast<double>(sampleCounts[mid])
+            : 0.5 * (sampleCounts[mid - 1] + sampleCounts[mid]);
+    }
+
+    if (m.starQueries > 0) {
+        m.refinementRatio = static_cast<double>(m.exactStarQueries) /
+                            static_cast<double>(m.starQueries);
+    }
+
+    return m;
+}
+
+ExperimentMetrics RunExperimentCase(const WoStKernel& kernel,
+                                    const std::string& meshName,
+                                    const std::string& experimentName,
+                                    const std::string& methodName,
+                                    int numQueryPoints,
+                                    const WoStParams& params,
+                                    uint64_t baseSeed,
+                                    float L,
+                                    const BoundarySetup& boundary,
+                                    bool writePoints = false,
+                                    const std::string& vtkPath = "") {
+    const auto queries = GenerateQueryPoints(numQueryPoints, L, baseSeed);
+    std::vector<PointSolution> solutions(numQueryPoints);
+    std::vector<char> validFlags(numQueryPoints, 0);
+    std::vector<char> divergedFlags(numQueryPoints, 0);
+
+    const auto t0 = std::chrono::high_resolution_clock::now();
+
+#pragma omp parallel for schedule(dynamic, 64)
+    for (int i = 0; i < numQueryPoints; ++i) {
+        const vec3 point = queries[i];
+        if (!kernel.InDomain(point)) continue;
+
+        WoStParams pointParams = params;
+        pointParams.seed = SeedFor(baseSeed, static_cast<uint64_t>(i), 0xBEEFu);
+        WalkResult r = kernel.SolvePoisson(point,
+                                           boundary.gInner,
+                                           boundary.isInnerNeumann,
+                                           boundary.hInner,
+                                           boundary.gOuter,
+                                           boundary.source,
+                                           pointParams);
+
+        PointSolution ps;
+        ps.pos = point;
+        ps.value = r.value;
+        ps.stdErr = r.stdErr;
+        ps.sampleVariance = r.sampleVariance;
+        ps.meanSteps = r.meanSteps;
+        ps.samplesUsed = r.samplesUsed;
+        ps.exact = LinearExact(point);
+        ps.starQueries = r.starQueries;
+        ps.fastOnlyStarQueries = r.fastOnlyStarQueries;
+        ps.exactStarQueries = r.exactStarQueries;
+        solutions[i] = ps;
+        validFlags[i] = 1;
+        divergedFlags[i] = r.anyDiverged ? 1 : 0;
+    }
+
+    const auto t1 = std::chrono::high_resolution_clock::now();
+    const double elapsed = std::chrono::duration<double>(t1 - t0).count();
+
+    ExperimentMetrics metrics = AccumulateExperimentMetrics(
+        experimentName, methodName, meshName, baseSeed, numQueryPoints,
+        params, elapsed, solutions, validFlags, divergedFlags);
+    AppendExperimentCsv(metrics);
+    if (writePoints) {
+        AppendExperimentPointCsv(experimentName, methodName, baseSeed, solutions, validFlags);
+    }
+
+    if (!vtkPath.empty()) {
+        std::vector<PointSolution> compact;
+        compact.reserve(metrics.validPoints);
+        for (int i = 0; i < numQueryPoints; ++i) {
+            if (validFlags[i]) compact.push_back(solutions[i]);
+        }
+        if (WriteVTKPointCloud(vtkPath, compact, true)) {
+            std::cout << "Wrote " << vtkPath << "\n";
+        }
+    }
+
+    std::cout << "\n=== " << experimentName << " / " << methodName << " ===\n"
+              << "seed: " << baseSeed << "  valid: " << metrics.validPoints
+              << " / " << metrics.numQueryPoints << "\n"
+              << "RMSE: " << metrics.rmse << "  MAE: " << metrics.mae
+              << "  rel_error: " << metrics.meanRelativeError << "\n"
+              << "mean samples: " << metrics.meanSamplesUsed
+              << "  median/min/max: " << metrics.medianSamplesUsed << " / "
+              << metrics.minSamplesUsed << " / " << metrics.maxSamplesUsed << "\n"
+              << "mean variance: " << metrics.meanSampleVariance
+              << "  mean std_error: " << metrics.meanStdError << "\n"
+              << "refinement ratio: " << metrics.refinementRatio
+              << "  elapsed_seconds: " << metrics.elapsedSeconds << "\n";
 
     return metrics;
 }
@@ -505,6 +841,7 @@ BenchmarkMetrics RunGridBenchmark(const WoStKernel& kernel,
 
             gp.value = r.value;
             gp.stdErr = r.stdErr;
+            gp.sampleVariance = r.sampleVariance;
             gp.meanSteps = r.meanSteps;
             gp.samplesUsed = r.samplesUsed;
             gp.exact = LinearExact(point);
@@ -514,9 +851,13 @@ BenchmarkMetrics RunGridBenchmark(const WoStKernel& kernel,
             ps.pos = point;
             ps.value = r.value;
             ps.stdErr = r.stdErr;
+            ps.sampleVariance = r.sampleVariance;
             ps.meanSteps = r.meanSteps;
             ps.samplesUsed = r.samplesUsed;
             ps.exact = gp.exact;
+            ps.starQueries = r.starQueries;
+            ps.fastOnlyStarQueries = r.fastOnlyStarQueries;
+            ps.exactStarQueries = r.exactStarQueries;
             solutions[idx] = ps;
             validFlags[idx] = 1;
             divergedFlags[idx] = r.anyDiverged ? 1 : 0;
@@ -739,6 +1080,222 @@ void RunAdaptive(const WoStKernel& kernel, const CliOptions& opts, const std::st
                      opts.seed ^ 0x6A1Du, opts.cubeHalfExtent, boundary, "results/adaptive_sampling_grid.vtk");
 }
 
+WoStParams ExperimentBaseParams(const CliOptions& opts) {
+    WoStParams p = BaseLinearParams();
+    p.numSamples = opts.maxSamples;
+    p.minSamples = opts.minSamples;
+    p.maxSamples = opts.maxSamples;
+    p.batchSize = opts.batchSize;
+    p.targetRSE = opts.targetRSE;
+    p.rseEps = opts.rseEps;
+    p.lazyRefineDistance = opts.lazyRefineDistance;
+    p.lazySuspiciousRatio = opts.lazySuspiciousRatio;
+    return p;
+}
+
+void RunAdaptiveComparison(const WoStKernel& kernel, const CliOptions& opts, const std::string& meshName) {
+    const BoundarySetup boundary = MakeLinearDirichletProblem();
+    for (int rep = 0; rep < 3; ++rep) {
+        const uint64_t expSeed = opts.seed + static_cast<uint64_t>(rep) * 1009ull + 0xAD0000u;
+        const bool writePoints = (rep == 0);
+
+        WoStParams fixed = ExperimentBaseParams(opts);
+        fixed.adaptiveSampling = false;
+        fixed.numSamples = opts.maxSamples;
+        RunExperimentCase(kernel, meshName, "adaptive_compare", "fixed",
+                          opts.numQueryPoints, fixed, expSeed, opts.cubeHalfExtent,
+                          boundary, writePoints);
+
+        WoStParams oldAdaptive = ExperimentBaseParams(opts);
+        oldAdaptive.adaptiveSampling = true;
+        oldAdaptive.useRelativeStdErr = false;
+        oldAdaptive.targetStdErr = 1e-3f;
+        RunExperimentCase(kernel, meshName, "adaptive_compare", "old_absolute_stderr",
+                          opts.numQueryPoints, oldAdaptive, expSeed, opts.cubeHalfExtent,
+                          boundary, writePoints);
+
+        WoStParams rseAdaptive = ExperimentBaseParams(opts);
+        rseAdaptive.adaptiveSampling = true;
+        rseAdaptive.useRelativeStdErr = true;
+        RunExperimentCase(kernel, meshName, "adaptive_compare", "relative_stderr",
+                          opts.numQueryPoints, rseAdaptive, expSeed, opts.cubeHalfExtent,
+                          boundary, writePoints,
+                          rep == 0 ? "experiments/adaptive_relative_points.vtk" : "");
+    }
+}
+
+void RunAntitheticComparison(const WoStKernel& kernel, const CliOptions& opts, const std::string& meshName) {
+    const BoundarySetup boundary = MakeLinearDirichletProblem();
+    for (int rep = 0; rep < 3; ++rep) {
+        const uint64_t expSeed = opts.seed + static_cast<uint64_t>(rep) * 1009ull + 0xA771u;
+        const bool writePoints = (rep == 0);
+
+        WoStParams normal = ExperimentBaseParams(opts);
+        normal.adaptiveSampling = false;
+        normal.numSamples = opts.maxSamples;
+        normal.useAntitheticSampling = false;
+        RunExperimentCase(kernel, meshName, "antithetic_compare", "normal",
+                          opts.numQueryPoints, normal, expSeed, opts.cubeHalfExtent,
+                          boundary, writePoints);
+
+        WoStParams anti = normal;
+        anti.useAntitheticSampling = true;
+        RunExperimentCase(kernel, meshName, "antithetic_compare", "antithetic",
+                          opts.numQueryPoints, anti, expSeed, opts.cubeHalfExtent,
+                          boundary, writePoints);
+    }
+}
+
+void RunLazyRefinementComparison(const WoStKernel& kernel, const CliOptions& opts, const std::string& meshName) {
+    const BoundarySetup boundary = MakeLinearDirichletProblem();
+    const float baseThreshold = opts.lazyRefineDistance > 0.f ? opts.lazyRefineDistance : 2.0f * BaseLinearParams().eps;
+
+    for (int rep = 0; rep < 3; ++rep) {
+        const uint64_t expSeed = opts.seed + static_cast<uint64_t>(rep) * 1009ull + 0x1A2Bu;
+        const bool writePoints = (rep == 0);
+
+        WoStParams full = ExperimentBaseParams(opts);
+        full.adaptiveSampling = false;
+        full.numSamples = opts.maxSamples;
+        full.useLazyStarRefinement = false;
+        RunExperimentCase(kernel, meshName, "lazy_refinement", "full_exact",
+                          opts.numQueryPoints, full, expSeed, opts.cubeHalfExtent,
+                          boundary, writePoints);
+
+        for (float mult : {1.0f, 4.0f, 16.0f}) {
+            WoStParams lazy = full;
+            lazy.useLazyStarRefinement = true;
+            lazy.lazyRefineDistance = baseThreshold * mult;
+            std::ostringstream name;
+            name << "lazy_threshold_x" << static_cast<int>(mult);
+            RunExperimentCase(kernel, meshName, "lazy_refinement", name.str(),
+                              opts.numQueryPoints, lazy, expSeed, opts.cubeHalfExtent,
+                              boundary, writePoints,
+                              (rep == 0 && mult == 1.0f) ? "experiments/lazy_refinement_points.vtk" : "");
+        }
+    }
+}
+
+void RunEpsilonExtrapolation(const WoStKernel& kernel, const CliOptions& opts, const std::string& meshName) {
+    const BoundarySetup boundary = MakeLinearDirichletProblem();
+    for (int rep = 0; rep < 3; ++rep) {
+        const uint64_t expSeed = opts.seed + static_cast<uint64_t>(rep) * 1009ull + 0xE95110u;
+        const bool writePoints = (rep == 0);
+
+        WoStParams eps = ExperimentBaseParams(opts);
+        eps.adaptiveSampling = false;
+        eps.numSamples = opts.maxSamples;
+        eps.eps = 1e-2f;
+        RunExperimentCase(kernel, meshName, "epsilon_extrapolation", "epsilon",
+                          opts.numQueryPoints, eps, expSeed, opts.cubeHalfExtent,
+                          boundary, writePoints);
+
+        WoStParams half = eps;
+        half.eps = eps.eps * 0.5f;
+        RunExperimentCase(kernel, meshName, "epsilon_extrapolation", "epsilon_half",
+                          opts.numQueryPoints, half, expSeed, opts.cubeHalfExtent,
+                          boundary, writePoints);
+    }
+}
+
+bool WriteSphereObj(const std::string& path, float radius, int slices, int stacks) {
+    namespace fs = std::filesystem;
+    fs::create_directories(fs::path(path).parent_path());
+    std::ofstream out(path);
+    if (!out.is_open()) return false;
+
+    for (int j = 0; j <= stacks; ++j) {
+        const float v = static_cast<float>(j) / static_cast<float>(stacks);
+        const float theta = 3.14159265359f * v;
+        const float z = radius * std::cos(theta);
+        const float r = radius * std::sin(theta);
+        for (int i = 0; i < slices; ++i) {
+            const float u = static_cast<float>(i) / static_cast<float>(slices);
+            const float phi = 6.28318530718f * u;
+            out << "v " << r * std::cos(phi) << ' '
+                << r * std::sin(phi) << ' ' << z << '\n';
+        }
+    }
+
+    auto idx = [slices](int j, int i) {
+        return j * slices + (i % slices) + 1;
+    };
+
+    for (int j = 0; j < stacks; ++j) {
+        for (int i = 0; i < slices; ++i) {
+            const int a = idx(j, i);
+            const int b = idx(j, i + 1);
+            const int c = idx(j + 1, i);
+            const int d = idx(j + 1, i + 1);
+            if (j > 0) out << "f " << a << ' ' << c << ' ' << b << '\n';
+            if (j + 1 < stacks) out << "f " << b << ' ' << c << ' ' << d << '\n';
+        }
+    }
+    return out.good();
+}
+
+void RunNeumannSanity(const CliOptions& opts) {
+    const std::string spherePath = "experiments/generated/inner_sphere.obj";
+    if (!WriteSphereObj(spherePath, 0.35f, 32, 16)) {
+        std::cerr << "Failed to write " << spherePath << "\n";
+        return;
+    }
+
+    WoStGeometryBackend sphere(spherePath);
+    CubeOuterBoundary exterior({-opts.cubeHalfExtent, -opts.cubeHalfExtent, -opts.cubeHalfExtent},
+                               { opts.cubeHalfExtent,  opts.cubeHalfExtent,  opts.cubeHalfExtent});
+    WoStKernel kernel(sphere, exterior);
+
+    BoundaryPoint bp;
+    double sumDot = 0.0;
+    double minDot = 1.0;
+    const std::vector<vec3> probes = {
+        {0.55f, 0.0f, 0.0f}, {0.0f, 0.55f, 0.0f}, {0.0f, 0.0f, 0.55f},
+        {-0.45f, 0.2f, 0.1f}, {0.2f, -0.5f, 0.15f}, {0.15f, 0.2f, -0.5f}
+    };
+    namespace fs = std::filesystem;
+    fs::create_directories("experiments");
+    std::ofstream diag(fs::path("experiments") / "neumann_normal_diagnostics.csv");
+    diag << "x,y,z,nx,ny,nz,expected_nx,expected_ny,expected_nz,h,expected_h,normal_dot\n";
+    for (const vec3& p : probes) {
+        sphere.ClosestPoint(p, bp);
+        const vec3 expected = norm3(bp.position);
+        const double ndot = dot3(bp.normal, expected);
+        const double h = dot3(vec3(1.0f, 1.0f, 1.0f), bp.normal);
+        const double expectedH = dot3(vec3(1.0f, 1.0f, 1.0f), expected);
+        sumDot += ndot;
+        minDot = std::min(minDot, ndot);
+        diag << p.x << ',' << p.y << ',' << p.z << ','
+             << bp.normal.x << ',' << bp.normal.y << ',' << bp.normal.z << ','
+             << expected.x << ',' << expected.y << ',' << expected.z << ','
+             << h << ',' << expectedH << ',' << ndot << '\n';
+    }
+    const double meanDot = sumDot / static_cast<double>(probes.size());
+    std::cout << "Neumann normal convention check: mean normal dot expected radial = "
+              << meanDot << ", min = " << minDot
+              << (meanDot > 0.95 && minDot > 0.8 ? " PASS\n" : " CHECK SIGN\n");
+
+    const BoundarySetup boundary = MakeLinearInnerNeumannProblem();
+    for (int rep = 0; rep < 3; ++rep) {
+        const uint64_t expSeed = opts.seed + static_cast<uint64_t>(rep) * 1009ull + 0x5A117u;
+        WoStParams p = ExperimentBaseParams(opts);
+        p.maxSteps = 2048;
+        p.numSamples = opts.maxSamples;
+        p.adaptiveSampling = false;
+        RunExperimentCase(kernel, spherePath, "neumann_sanity", "sphere_cube",
+                          opts.numQueryPoints, p, expSeed, opts.cubeHalfExtent,
+                          boundary, rep == 0);
+    }
+}
+
+void RunOptimizationExperiments(const WoStKernel& kernel, const CliOptions& opts, const std::string& meshName) {
+    RunAdaptiveComparison(kernel, opts, meshName);
+    RunAntitheticComparison(kernel, opts, meshName);
+    RunLazyRefinementComparison(kernel, opts, meshName);
+    RunEpsilonExtrapolation(kernel, opts, meshName);
+    RunNeumannSanity(opts);
+}
+
 std::vector<int> ThreadSweepValues(int requestedMaxThreads) {
     const int maxThreads = std::max(1, requestedMaxThreads > 0 ? requestedMaxThreads : CurrentThreadCount());
     std::vector<int> values;
@@ -811,7 +1368,10 @@ int main(int argc, char** argv) {
     const std::string mode = opts.mode;
     if (mode != "convergence" && mode != "epsilon" && mode != "grid" &&
         mode != "adaptive" && mode != "neumann" && mode != "threads" &&
-        mode != "geometry" && mode != "all") {
+        mode != "geometry" && mode != "adaptive_compare" &&
+        mode != "antithetic" && mode != "lazy" &&
+        mode != "epsilon_extrapolation" && mode != "neumann_sanity" &&
+        mode != "optimization" && mode != "all") {
         std::cerr << "Unknown mode: " << mode << "\n";
         PrintUsage(argv[0]);
         return 1;
@@ -824,7 +1384,11 @@ int main(int argc, char** argv) {
               << "grid: " << opts.gridRes << "^3\n"
               << "cube half extent: " << opts.cubeHalfExtent << "\n"
               << "threads: " << CurrentThreadCount() << "\n"
-              << "seed: " << opts.seed << "\n";
+              << "seed: " << opts.seed << "\n"
+              << "adaptive min/max/batch: " << opts.minSamples << " / "
+              << opts.maxSamples << " / " << opts.batchSize
+              << "  target_rse: " << opts.targetRSE
+              << "  rse_eps: " << opts.rseEps << "\n";
 
     WoStGeometryBackend interior(opts.objFile);
     CubeOuterBoundary exterior({-opts.cubeHalfExtent, -opts.cubeHalfExtent, -opts.cubeHalfExtent},
@@ -852,7 +1416,22 @@ int main(int argc, char** argv) {
     if (mode == "geometry" || mode == "all") {
         RunGeometryBenchmark(interior, opts, opts.objFile);
     }
+    if (mode == "adaptive_compare" || mode == "optimization") {
+        RunAdaptiveComparison(kernel, opts, opts.objFile);
+    }
+    if (mode == "antithetic" || mode == "optimization") {
+        RunAntitheticComparison(kernel, opts, opts.objFile);
+    }
+    if (mode == "lazy" || mode == "optimization") {
+        RunLazyRefinementComparison(kernel, opts, opts.objFile);
+    }
+    if (mode == "epsilon_extrapolation" || mode == "optimization") {
+        RunEpsilonExtrapolation(kernel, opts, opts.objFile);
+    }
+    if (mode == "neumann_sanity" || mode == "optimization") {
+        RunNeumannSanity(opts);
+    }
 
-    std::cout << "\nBenchmark outputs written under results/.\n";
+    std::cout << "\nBenchmark outputs written under results/. Optimization outputs written under experiments/.\n";
     return 0;
 }

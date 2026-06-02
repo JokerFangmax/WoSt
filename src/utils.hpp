@@ -94,6 +94,15 @@ struct WoStParams {
     int maxSamples = 1024;
     int batchSize = 32;
     float targetStdErr = 1e-3f;
+    bool useRelativeStdErr = false;
+    float targetRSE = 0.05f;
+    float rseEps = 1e-3f;
+
+    bool useAntitheticSampling = false;
+
+    bool useLazyStarRefinement = true;
+    float lazyRefineDistance = 0.0f;  ///< absolute trigger; <=0 means 2*eps
+    float lazySuspiciousRatio = 0.0f; ///< optional inner/outer distance-ratio trigger
 };
 
 // ===========================================================================
@@ -102,9 +111,13 @@ struct WoStParams {
 struct WalkResult {
     float value       = 0.f;  ///< Monte Carlo estimate  E[u(x)]
     float stdErr      = 0.f;  ///< standard error  σ / sqrt(N)
+    float sampleVariance = 0.f; ///< population variance of walk estimates
     float meanSteps   = 0.f;  ///< average walk length in steps
     bool anyDiverged = false;///< true if any walk hit maxSteps limit
     int samplesUsed   = 0;    ///< actual number of random walks used
+    uint64_t starQueries = 0;
+    uint64_t fastOnlyStarQueries = 0;
+    uint64_t exactStarQueries = 0;
 };
 
 struct FastRNG {
@@ -187,6 +200,7 @@ inline void finalise(WalkResult& r, double sumV, double sumV2, int sumSteps, int
     if (N <= 0) {
         r.value = 0.f;
         r.stdErr = 0.f;
+        r.sampleVariance = 0.f;
         r.meanSteps = 0.f;
         r.samplesUsed = 0;
         return;
@@ -199,6 +213,7 @@ inline void finalise(WalkResult& r, double sumV, double sumV2, int sumSteps, int
     double mean  = sumV / N;
     double var   = std::max(0.0, sumV2 / N - mean * mean);
     double sigma = std::sqrt(var);                     // population std-dev
+    r.sampleVariance = static_cast<float>(var);
     r.stdErr     = static_cast<float>(sigma / std::sqrt(static_cast<double>(N)));
 }
 
@@ -228,9 +243,13 @@ struct PointSolution {
     vec3  pos{};
     float value = 0.f;
     float stdErr = 0.f;
+    float sampleVariance = 0.f;
     float meanSteps = 0.f;
     int samplesUsed = 0;
     float exact = 0.f;   // optional analytic value (0 if unknown); written only when hasExact=true
+    uint64_t starQueries = 0;
+    uint64_t fastOnlyStarQueries = 0;
+    uint64_t exactStarQueries = 0;
 };
 
 // ---------------------------------------------------------------------------
@@ -288,6 +307,10 @@ inline bool WriteVTKPointCloud(const std::string&                filename,
          "LOOKUP_TABLE default\n";
     for (const auto& p : pts) f << p.stdErr << '\n';
 
+    f << "SCALARS sample_variance float 1\n"
+         "LOOKUP_TABLE default\n";
+    for (const auto& p : pts) f << p.sampleVariance << '\n';
+
     // mean walk steps
     f << "SCALARS mean_steps float 1\n"
          "LOOKUP_TABLE default\n";
@@ -297,6 +320,14 @@ inline bool WriteVTKPointCloud(const std::string&                filename,
     f << "SCALARS samples_used int 1\n"
          "LOOKUP_TABLE default\n";
     for (const auto& p : pts) f << p.samplesUsed << '\n';
+
+    f << "SCALARS exact_star_queries unsigned_long 1\n"
+         "LOOKUP_TABLE default\n";
+    for (const auto& p : pts) f << p.exactStarQueries << '\n';
+
+    f << "SCALARS fast_only_star_queries unsigned_long 1\n"
+         "LOOKUP_TABLE default\n";
+    for (const auto& p : pts) f << p.fastOnlyStarQueries << '\n';
 
     // optional exact solution + absolute error
     if (hasExact) {
@@ -322,6 +353,7 @@ inline bool WriteVTKPointCloud(const std::string&                filename,
 struct GridPoint {
     float value = 0.f;      // NaN if outside domain
     float stdErr = 0.f;
+    float sampleVariance = 0.f;
     float meanSteps = 0.f;
     int samplesUsed = 0;
     float exact = 0.f;      // optional
@@ -371,6 +403,11 @@ inline bool WriteVTKStructuredPoints(const std::string&           filename,
          "LOOKUP_TABLE default\n";
     for (const auto& g : grid)
         f << (g.valid ? g.stdErr : 0.f) << '\n';
+
+    f << "SCALARS sample_variance float 1\n"
+         "LOOKUP_TABLE default\n";
+    for (const auto& g : grid)
+        f << (g.valid ? g.sampleVariance : 0.f) << '\n';
 
     // mean steps
     f << "SCALARS mean_steps float 1\n"
