@@ -226,3 +226,110 @@ For the mixed Neumann boundary benchmark and results, see:
 ```text
 docs/NEUMANN_BENCHMARK_REPORT.md
 ```
+
+## Final Live Demo and Innovation Features
+
+The final project contribution is not only reproducing the base Walk-on-Stars estimator. We reposition the C++ implementation as:
+
+```text
+A Self-Diagnostic and Optimization-Aware Walk-on-Stars Solver for Complex Mesh Domains
+```
+
+The new demo and diagnostic modes make the solver easier to explain, debug, and tune on complex meshes.
+
+### 1. Walk Path Debugger
+
+`demo_point` solves the analytic benchmark at one query point and records a small number of random-walk paths. The trace shows sphere steps, boundary hits, and Neumann reflections when mixed-boundary mode is enabled.
+
+```powershell
+.\build\Release\wost.exe --mode demo_point --obj .\obj\Bunny.obj --cube 0.22 --point 0.05 0.02 0.08 --walks 64 --epsilon 1e-4 --seed 12345 --trace-out results\live_trace.csv --summary-out results\live_demo_summary.csv
+
+.\.venv\Scripts\python.exe .\scripts\plot_live_trace.py --trace results\live_trace.csv --summary results\live_demo_summary.csv --out results\live_trace_plot.png
+```
+
+Useful optional flags:
+
+```powershell
+--boundary dirichlet
+--boundary neumann
+--trace-walks 8
+--antithetic
+```
+
+Outputs:
+
+```text
+results/live_trace.csv
+results/live_demo_summary.csv
+results/live_trace_plot.png
+```
+
+### 2. Boundary Bias Detector
+
+`bias_detector` compares `u_epsilon(x)` with `u_epsilon/2(x)` on a grid. Large pointwise differences indicate that the boundary approximation may be too coarse at that location.
+
+```powershell
+.\build\Release\wost.exe --mode bias_detector --obj .\obj\Bunny.obj --cube 0.22 --epsilon 1e-3 --walks 256 --grid 32 --threads 8 --out results\boundary_bias_detector.vtk --csv results\boundary_bias_summary.csv
+
+.\.venv\Scripts\python.exe .\scripts\plot_boundary_bias.py --vtk results\boundary_bias_detector.vtk --summary results\boundary_bias_summary.csv --out results\boundary_bias_detector.png
+```
+
+The VTK file contains:
+
+```text
+solution_epsilon
+solution_epsilon_half
+bias_indicator
+normalized_bias
+std_error_epsilon
+std_error_epsilon_half
+mean_steps_epsilon
+mean_steps_epsilon_half
+exact
+abs_error_epsilon
+abs_error_epsilon_half
+is_valid
+```
+
+Outputs:
+
+```text
+results/boundary_bias_detector.vtk
+results/boundary_bias_summary.csv
+results/boundary_bias_detector.png
+```
+
+### 3. Variance-Predicted Adaptive Sampling
+
+`variance_adaptive` uses a two-stage strategy. A pilot stage estimates sample variance at each query point, then the solver predicts the number of walks needed to reach a target standard error:
+
+```text
+M_i = ceil(variance_i / target_std_error^2)
+```
+
+The predicted count is clamped between `--min-samples` and `--max-samples`. The mode compares fixed baselines against several target standard-error values.
+
+```powershell
+.\build\Release\wost.exe --mode variance_adaptive --obj .\obj\Bunny.obj --cube 0.22 --queries 500 --epsilon 1e-4 --pilot-samples 32 --min-samples 32 --max-samples 1024 --target-std-error 0.005 --threads 8 --out results\variance_adaptive_points.csv
+
+.\.venv\Scripts\python.exe .\scripts\plot_variance_adaptive.py --comparison results\variance_adaptive_comparison.csv --points results\variance_adaptive_points.csv --tradeoff-out results\variance_adaptive_tradeoff.png --samples-out results\variance_adaptive_samples_map.png
+```
+
+Outputs:
+
+```text
+results/variance_adaptive_points.csv
+results/variance_adaptive_summary.csv
+results/variance_adaptive_comparison.csv
+results/variance_adaptive_tradeoff.png
+results/variance_adaptive_samples_map.png
+```
+
+For a compact live-demo wrapper:
+
+```powershell
+.\.venv\Scripts\python.exe .\scripts\run_live_demo.py --preset dirichlet16
+.\.venv\Scripts\python.exe .\scripts\run_live_demo.py --preset dirichlet256
+.\.venv\Scripts\python.exe .\scripts\run_live_demo.py --preset neumann64
+.\.venv\Scripts\python.exe .\scripts\run_live_demo.py --preset antithetic64
+```

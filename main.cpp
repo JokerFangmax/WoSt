@@ -41,6 +41,19 @@ struct CliOptions {
     float rseEps = 1e-3f;
     float lazyRefineDistance = 0.0f;
     float lazySuspiciousRatio = 0.0f;
+    vec3 demoPoint = {0.05f, 0.02f, 0.08f};
+    int walks = 256;
+    float epsilon = 1e-4f;
+    std::string boundaryMode = "dirichlet";
+    std::string traceOut = "results/live_trace.csv";
+    std::string summaryOut = "results/live_demo_summary.csv";
+    std::string outPath = "";
+    std::string csvPath = "";
+    int traceWalks = 8;
+    float biasThreshold = 2.0f;
+    int pilotSamples = 32;
+    float targetStdError = 0.005f;
+    bool useAntithetic = false;
 };
 
 struct BenchmarkMetrics {
@@ -214,10 +227,15 @@ std::string ResolveObjPath(const std::string& requested) {
 void PrintUsage(const char* exe) {
     std::cout
         << "Usage: " << exe << " [--mode convergence|epsilon|grid|adaptive|neumann|threads|geometry|"
-        << "adaptive_compare|antithetic|lazy|epsilon_extrapolation|neumann_sanity|optimization|all] "
+        << "adaptive_compare|antithetic|lazy|epsilon_extrapolation|neumann_sanity|optimization|"
+        << "demo_point|bias_detector|variance_adaptive|all] "
         << "[--obj path] [--queries N] [--grid N] [--threads N] [--seed N] [--cube L]\n"
         << "Optimization knobs: [--min-samples N] [--max-samples N] [--batch-size N] "
-        << "[--target-rse X] [--rse-eps X] [--lazy-threshold X] [--lazy-ratio X]\n";
+        << "[--target-rse X] [--rse-eps X] [--lazy-threshold X] [--lazy-ratio X]\n"
+        << "Demo/diagnostic knobs: [--point X Y Z] [--walks N] [--epsilon X] "
+        << "[--boundary dirichlet|neumann] [--trace-out path] [--summary-out path] "
+        << "[--out path] [--csv path] [--trace-walks N] [--bias-threshold X] "
+        << "[--pilot-samples N] [--target-std-error X] [--antithetic]\n";
 }
 
 bool ParseArgs(int argc, char** argv, CliOptions& opts) {
@@ -290,6 +308,64 @@ bool ParseArgs(int argc, char** argv, CliOptions& opts) {
             const char* v = needValue(arg);
             if (!v) return false;
             opts.lazySuspiciousRatio = std::max(0.0f, std::stof(v));
+        } else if (arg == "--point") {
+            const char* x = needValue(arg);
+            if (!x) return false;
+            const char* y = needValue(arg);
+            if (!y) return false;
+            const char* z = needValue(arg);
+            if (!z) return false;
+            opts.demoPoint = {std::stof(x), std::stof(y), std::stof(z)};
+        } else if (arg == "--walks") {
+            const char* v = needValue(arg);
+            if (!v) return false;
+            opts.walks = std::max(1, std::stoi(v));
+        } else if (arg == "--epsilon") {
+            const char* v = needValue(arg);
+            if (!v) return false;
+            opts.epsilon = std::max(1e-8f, std::stof(v));
+        } else if (arg == "--boundary") {
+            const char* v = needValue(arg);
+            if (!v) return false;
+            opts.boundaryMode = v;
+            if (opts.boundaryMode != "dirichlet" && opts.boundaryMode != "neumann") {
+                std::cerr << "--boundary must be dirichlet or neumann\n";
+                return false;
+            }
+        } else if (arg == "--trace-out") {
+            const char* v = needValue(arg);
+            if (!v) return false;
+            opts.traceOut = v;
+        } else if (arg == "--summary-out") {
+            const char* v = needValue(arg);
+            if (!v) return false;
+            opts.summaryOut = v;
+        } else if (arg == "--out") {
+            const char* v = needValue(arg);
+            if (!v) return false;
+            opts.outPath = v;
+        } else if (arg == "--csv") {
+            const char* v = needValue(arg);
+            if (!v) return false;
+            opts.csvPath = v;
+        } else if (arg == "--trace-walks") {
+            const char* v = needValue(arg);
+            if (!v) return false;
+            opts.traceWalks = std::max(0, std::stoi(v));
+        } else if (arg == "--bias-threshold") {
+            const char* v = needValue(arg);
+            if (!v) return false;
+            opts.biasThreshold = std::max(0.0f, std::stof(v));
+        } else if (arg == "--pilot-samples") {
+            const char* v = needValue(arg);
+            if (!v) return false;
+            opts.pilotSamples = std::max(1, std::stoi(v));
+        } else if (arg == "--target-std-error") {
+            const char* v = needValue(arg);
+            if (!v) return false;
+            opts.targetStdError = std::max(1e-8f, std::stof(v));
+        } else if (arg == "--antithetic") {
+            opts.useAntithetic = true;
         } else {
             std::cerr << "Unknown argument: " << arg << "\n";
             PrintUsage(argv[0]);
@@ -1093,6 +1169,512 @@ WoStParams ExperimentBaseParams(const CliOptions& opts) {
     return p;
 }
 
+BoundarySetup BoundaryFromMode(const std::string& mode) {
+    return mode == "neumann" ? MakeLinearInnerNeumannProblem() : MakeLinearDirichletProblem();
+}
+
+void EnsureParentDirectory(const std::string& path) {
+    namespace fs = std::filesystem;
+    const fs::path p(path);
+    const fs::path parent = p.parent_path();
+    if (!parent.empty()) fs::create_directories(parent);
+}
+
+void WriteTraceCsv(const std::string& path, const std::vector<WalkTraceRow>& rows) {
+    EnsureParentDirectory(path);
+    std::ofstream out(path);
+    if (!out.is_open()) {
+        std::cerr << "Failed to write trace CSV: " << path << "\n";
+        return;
+    }
+    out << "walk_id,step_id,x,y,z,radius,event_type,boundary_type\n";
+    out << std::setprecision(9);
+    for (const auto& r : rows) {
+        out << r.walkId << ',' << r.stepId << ','
+            << r.pos.x << ',' << r.pos.y << ',' << r.pos.z << ','
+            << r.radius << ',' << CsvEscape(r.eventType) << ','
+            << CsvEscape(r.boundaryType) << '\n';
+    }
+}
+
+void RunDemoPoint(const WoStKernel& kernel, const CliOptions& opts) {
+    const BoundarySetup boundary = BoundaryFromMode(opts.boundaryMode);
+    const vec3 point = opts.demoPoint;
+    if (!kernel.InDomain(point)) {
+        std::cerr << "demo_point query is outside the computational domain: "
+                  << point.x << ", " << point.y << ", " << point.z << "\n";
+        return;
+    }
+
+    WoStParams p = BaseLinearParams();
+    p.numSamples = opts.walks;
+    p.eps = opts.epsilon;
+    p.seed = opts.seed;
+    p.useAntitheticSampling = opts.useAntithetic;
+    p.maxSteps = opts.boundaryMode == "neumann" ? 2048 : 512;
+
+    const auto t0 = std::chrono::high_resolution_clock::now();
+    WalkResult r = kernel.SolvePoisson(point,
+                                       boundary.gInner,
+                                       boundary.isInnerNeumann,
+                                       boundary.hInner,
+                                       boundary.gOuter,
+                                       boundary.source,
+                                       p);
+    const auto t1 = std::chrono::high_resolution_clock::now();
+    const double elapsed = std::chrono::duration<double>(t1 - t0).count();
+
+    const int traceWalks = std::min(opts.traceWalks, opts.walks);
+    WoStParams traceParams = p;
+    traceParams.numSamples = traceWalks;
+    const std::vector<WalkTraceRow> trace = kernel.TraceWalks(point,
+                                                              boundary.gInner,
+                                                              boundary.isInnerNeumann,
+                                                              boundary.hInner,
+                                                              boundary.gOuter,
+                                                              boundary.source,
+                                                              traceParams,
+                                                              traceWalks);
+    WriteTraceCsv(opts.traceOut, trace);
+
+    EnsureParentDirectory(opts.summaryOut);
+    std::ofstream summary(opts.summaryOut);
+    summary << "boundary,seed,walks,trace_walks,epsilon,estimated_value,exact_value,"
+            << "absolute_error,standard_error,sample_variance,mean_steps,runtime_seconds,"
+            << "samples_used,any_diverged\n";
+    const float exact = LinearExact(point);
+    summary << CsvEscape(opts.boundaryMode) << ','
+            << opts.seed << ','
+            << opts.walks << ','
+            << traceWalks << ','
+            << std::setprecision(9) << opts.epsilon << ','
+            << r.value << ','
+            << exact << ','
+            << std::abs(r.value - exact) << ','
+            << r.stdErr << ','
+            << r.sampleVariance << ','
+            << r.meanSteps << ','
+            << std::setprecision(12) << elapsed << ','
+            << r.samplesUsed << ','
+            << (r.anyDiverged ? 1 : 0) << '\n';
+
+    std::cout << "\n=== demo_point ===\n"
+              << "boundary: " << opts.boundaryMode << "\n"
+              << "point: (" << point.x << ", " << point.y << ", " << point.z << ")\n"
+              << "estimate: " << r.value << "  exact: " << exact
+              << "  abs_error: " << std::abs(r.value - exact) << "\n"
+              << "std_error: " << r.stdErr << "  mean_steps: " << r.meanSteps
+              << "  runtime_seconds: " << elapsed << "\n"
+              << "wrote " << opts.traceOut << "\n"
+              << "wrote " << opts.summaryOut << "\n";
+}
+
+struct BiasGridPoint {
+    float solutionEps = 0.f;
+    float solutionHalf = 0.f;
+    float bias = 0.f;
+    float normalizedBias = 0.f;
+    float stdErrEps = 0.f;
+    float stdErrHalf = 0.f;
+    float meanStepsEps = 0.f;
+    float meanStepsHalf = 0.f;
+    float exact = 0.f;
+    float absErrEps = 0.f;
+    float absErrHalf = 0.f;
+    bool valid = false;
+};
+
+bool WriteBiasVTK(const std::string& path, const GridInfo& gi, const std::vector<BiasGridPoint>& grid) {
+    if (static_cast<int>(grid.size()) != gi.nx * gi.ny * gi.nz) return false;
+    EnsureParentDirectory(path);
+    std::ofstream f(path);
+    if (!f.is_open()) return false;
+    f.precision(8);
+    f << "# vtk DataFile Version 3.0\n"
+      << "WoSt boundary bias detector\n"
+      << "ASCII\n"
+      << "DATASET STRUCTURED_POINTS\n";
+    f << "DIMENSIONS " << gi.nx << ' ' << gi.ny << ' ' << gi.nz << '\n';
+    f << "ORIGIN " << gi.ox << ' ' << gi.oy << ' ' << gi.oz << '\n';
+    f << "SPACING " << gi.dx << ' ' << gi.dy << ' ' << gi.dz << '\n';
+    f << "POINT_DATA " << grid.size() << '\n';
+
+    auto writeScalar = [&](const char* name, auto getter) {
+        f << "SCALARS " << name << " float 1\nLOOKUP_TABLE default\n";
+        for (const auto& g : grid) f << getter(g) << '\n';
+    };
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    writeScalar("solution_epsilon", [&](const BiasGridPoint& g) { return g.valid ? g.solutionEps : nan; });
+    writeScalar("solution_epsilon_half", [&](const BiasGridPoint& g) { return g.valid ? g.solutionHalf : nan; });
+    writeScalar("bias_indicator", [&](const BiasGridPoint& g) { return g.valid ? g.bias : nan; });
+    writeScalar("normalized_bias", [&](const BiasGridPoint& g) { return g.valid ? g.normalizedBias : nan; });
+    writeScalar("std_error_epsilon", [&](const BiasGridPoint& g) { return g.valid ? g.stdErrEps : 0.f; });
+    writeScalar("std_error_epsilon_half", [&](const BiasGridPoint& g) { return g.valid ? g.stdErrHalf : 0.f; });
+    writeScalar("mean_steps_epsilon", [&](const BiasGridPoint& g) { return g.valid ? g.meanStepsEps : 0.f; });
+    writeScalar("mean_steps_epsilon_half", [&](const BiasGridPoint& g) { return g.valid ? g.meanStepsHalf : 0.f; });
+    writeScalar("exact", [&](const BiasGridPoint& g) { return g.valid ? g.exact : 0.f; });
+    writeScalar("abs_error_epsilon", [&](const BiasGridPoint& g) { return g.valid ? g.absErrEps : 0.f; });
+    writeScalar("abs_error_epsilon_half", [&](const BiasGridPoint& g) { return g.valid ? g.absErrHalf : 0.f; });
+    writeScalar("is_valid", [&](const BiasGridPoint& g) { return g.valid ? 1.f : 0.f; });
+    return f.good();
+}
+
+void RunBiasDetector(const WoStKernel& kernel, const CliOptions& opts) {
+    const BoundarySetup boundary = BoundaryFromMode(opts.boundaryMode);
+    const std::string vtkPath = opts.outPath.empty() ? "results/boundary_bias_detector.vtk" : opts.outPath;
+    const std::string csvPath = opts.csvPath.empty() ? "results/boundary_bias_summary.csv" : opts.csvPath;
+
+    GridInfo gi;
+    gi.nx = opts.gridRes;
+    gi.ny = opts.gridRes;
+    gi.nz = opts.gridRes;
+    gi.ox = -opts.cubeHalfExtent;
+    gi.oy = -opts.cubeHalfExtent;
+    gi.oz = -opts.cubeHalfExtent;
+    gi.dx = (2.0f * opts.cubeHalfExtent) / static_cast<float>(opts.gridRes - 1);
+    gi.dy = gi.dx;
+    gi.dz = gi.dx;
+    const int totalPoints = gi.nx * gi.ny * gi.nz;
+    std::vector<BiasGridPoint> grid(totalPoints);
+
+    WoStParams base = BaseLinearParams();
+    base.numSamples = opts.walks;
+    base.eps = opts.epsilon;
+    base.maxSteps = opts.boundaryMode == "neumann" ? 2048 : 512;
+
+    const auto t0 = std::chrono::high_resolution_clock::now();
+#pragma omp parallel for schedule(dynamic, 32)
+    for (int idx = 0; idx < totalPoints; ++idx) {
+        const int ix = idx % gi.nx;
+        const int iy = (idx / gi.nx) % gi.ny;
+        const int iz = idx / (gi.nx * gi.ny);
+        const vec3 point = {
+            gi.ox + gi.dx * static_cast<float>(ix),
+            gi.oy + gi.dy * static_cast<float>(iy),
+            gi.oz + gi.dz * static_cast<float>(iz)
+        };
+        if (!kernel.InDomain(point)) continue;
+
+        WoStParams p1 = base;
+        p1.seed = SeedFor(opts.seed, static_cast<uint64_t>(idx), 0xB1A5u);
+        WalkResult r1 = kernel.SolvePoisson(point, boundary.gInner, boundary.isInnerNeumann,
+                                            boundary.hInner, boundary.gOuter, boundary.source, p1);
+        WoStParams p2 = p1;
+        p2.eps = opts.epsilon * 0.5f;
+        p2.seed = p1.seed;
+        WalkResult r2 = kernel.SolvePoisson(point, boundary.gInner, boundary.isInnerNeumann,
+                                            boundary.hInner, boundary.gOuter, boundary.source, p2);
+
+        BiasGridPoint bg;
+        bg.solutionEps = r1.value;
+        bg.solutionHalf = r2.value;
+        bg.bias = std::abs(r1.value - r2.value);
+        bg.normalizedBias = bg.bias / (r1.stdErr + r2.stdErr + 1e-6f);
+        bg.stdErrEps = r1.stdErr;
+        bg.stdErrHalf = r2.stdErr;
+        bg.meanStepsEps = r1.meanSteps;
+        bg.meanStepsHalf = r2.meanSteps;
+        bg.exact = LinearExact(point);
+        bg.absErrEps = std::abs(r1.value - bg.exact);
+        bg.absErrHalf = std::abs(r2.value - bg.exact);
+        bg.valid = true;
+        grid[idx] = bg;
+    }
+    const auto t1 = std::chrono::high_resolution_clock::now();
+    const double elapsed = std::chrono::duration<double>(t1 - t0).count();
+
+    int valid = 0;
+    int highBias = 0;
+    double sumBias = 0.0;
+    double maxBias = 0.0;
+    double sumNorm = 0.0;
+    double sumSqEps = 0.0;
+    double sumSqHalf = 0.0;
+    for (const auto& g : grid) {
+        if (!g.valid) continue;
+        ++valid;
+        sumBias += g.bias;
+        maxBias = std::max(maxBias, static_cast<double>(g.bias));
+        sumNorm += g.normalizedBias;
+        sumSqEps += static_cast<double>(g.absErrEps) * g.absErrEps;
+        sumSqHalf += static_cast<double>(g.absErrHalf) * g.absErrHalf;
+        if (g.normalizedBias > opts.biasThreshold) ++highBias;
+    }
+
+    WriteBiasVTK(vtkPath, gi, grid);
+    EnsureParentDirectory(csvPath);
+    std::ofstream csv(csvPath);
+    csv << "boundary,epsilon,epsilon_half,walks,grid,valid_points,mean_bias,max_bias,"
+        << "mean_normalized_bias,high_bias_point_count,high_bias_ratio,rmse_epsilon,"
+        << "rmse_epsilon_half,runtime_seconds,bias_threshold\n";
+    const double inv = valid > 0 ? 1.0 / static_cast<double>(valid) : 0.0;
+    csv << CsvEscape(opts.boundaryMode) << ','
+        << std::setprecision(9) << opts.epsilon << ','
+        << opts.epsilon * 0.5f << ','
+        << opts.walks << ','
+        << opts.gridRes << ','
+        << valid << ','
+        << sumBias * inv << ','
+        << maxBias << ','
+        << sumNorm * inv << ','
+        << highBias << ','
+        << (valid > 0 ? static_cast<double>(highBias) * inv : 0.0) << ','
+        << (valid > 0 ? std::sqrt(sumSqEps * inv) : 0.0) << ','
+        << (valid > 0 ? std::sqrt(sumSqHalf * inv) : 0.0) << ','
+        << std::setprecision(12) << elapsed << ','
+        << opts.biasThreshold << '\n';
+
+    std::cout << "\n=== bias_detector ===\n"
+              << "boundary: " << opts.boundaryMode
+              << "  valid: " << valid << " / " << totalPoints << "\n"
+              << "mean_bias: " << sumBias * inv
+              << "  mean_normalized_bias: " << sumNorm * inv
+              << "  high_bias_ratio: " << (valid > 0 ? static_cast<double>(highBias) * inv : 0.0) << "\n"
+              << "wrote " << vtkPath << "\n"
+              << "wrote " << csvPath << "\n";
+}
+
+struct VariancePointRow {
+    int pointId = 0;
+    vec3 pos{};
+    float exact = 0.f;
+    float value = 0.f;
+    float absError = 0.f;
+    float stdError = 0.f;
+    float sampleVariance = 0.f;
+    int predictedSamples = 0;
+    int samplesUsed = 0;
+    float meanSteps = 0.f;
+    bool valid = false;
+};
+
+struct VarianceSummary {
+    std::string method;
+    int queries = 0;
+    int validPoints = 0;
+    float epsilon = 0.f;
+    int pilotSamples = 0;
+    int minSamples = 0;
+    int maxSamples = 0;
+    float targetStdError = 0.f;
+    double rmse = 0.0;
+    double mae = 0.0;
+    double maxAbsError = 0.0;
+    double meanStdError = 0.0;
+    double meanSampleVariance = 0.0;
+    double meanPredictedSamples = 0.0;
+    double meanSamplesUsed = 0.0;
+    double meanSteps = 0.0;
+    double runtimeSeconds = 0.0;
+};
+
+void WriteVariancePointsCsv(const std::string& path, const std::vector<VariancePointRow>& rows) {
+    EnsureParentDirectory(path);
+    std::ofstream out(path);
+    out << "point_id,x,y,z,exact,value,abs_error,std_error,sample_variance,"
+        << "predicted_samples,samples_used,mean_steps,is_valid\n";
+    out << std::setprecision(9);
+    for (const auto& r : rows) {
+        out << r.pointId << ','
+            << r.pos.x << ',' << r.pos.y << ',' << r.pos.z << ','
+            << r.exact << ',' << r.value << ',' << r.absError << ','
+            << r.stdError << ',' << r.sampleVariance << ','
+            << r.predictedSamples << ',' << r.samplesUsed << ','
+            << r.meanSteps << ',' << (r.valid ? 1 : 0) << '\n';
+    }
+}
+
+void WriteVarianceSummaryCsv(const std::string& path, const std::vector<VarianceSummary>& rows) {
+    EnsureParentDirectory(path);
+    std::ofstream out(path);
+    out << "method,queries,valid_points,epsilon,pilot_samples,min_samples,max_samples,"
+        << "target_std_error,rmse,mae,max_abs_error,mean_std_error,mean_sample_variance,"
+        << "mean_predicted_samples,mean_samples_used,mean_steps,runtime_seconds\n";
+    out << std::setprecision(12);
+    for (const auto& s : rows) {
+        out << CsvEscape(s.method) << ','
+            << s.queries << ','
+            << s.validPoints << ','
+            << s.epsilon << ','
+            << s.pilotSamples << ','
+            << s.minSamples << ','
+            << s.maxSamples << ','
+            << s.targetStdError << ','
+            << s.rmse << ','
+            << s.mae << ','
+            << s.maxAbsError << ','
+            << s.meanStdError << ','
+            << s.meanSampleVariance << ','
+            << s.meanPredictedSamples << ','
+            << s.meanSamplesUsed << ','
+            << s.meanSteps << ','
+            << s.runtimeSeconds << '\n';
+    }
+}
+
+VarianceSummary AccumulateVarianceSummary(const std::string& method,
+                                          const CliOptions& opts,
+                                          int valid,
+                                          double elapsed,
+                                          const std::vector<VariancePointRow>& rows,
+                                          float targetStdError) {
+    VarianceSummary s;
+    s.method = method;
+    s.queries = opts.numQueryPoints;
+    s.validPoints = valid;
+    s.epsilon = opts.epsilon;
+    s.pilotSamples = opts.pilotSamples;
+    s.minSamples = opts.minSamples;
+    s.maxSamples = opts.maxSamples;
+    s.targetStdError = targetStdError;
+    s.runtimeSeconds = elapsed;
+
+    double sumSq = 0.0;
+    double sumAbs = 0.0;
+    double sumStd = 0.0;
+    double sumVar = 0.0;
+    double sumPred = 0.0;
+    double sumUsed = 0.0;
+    double sumSteps = 0.0;
+    for (const auto& r : rows) {
+        if (!r.valid) continue;
+        sumSq += static_cast<double>(r.absError) * r.absError;
+        sumAbs += r.absError;
+        s.maxAbsError = std::max(s.maxAbsError, static_cast<double>(r.absError));
+        sumStd += r.stdError;
+        sumVar += r.sampleVariance;
+        sumPred += r.predictedSamples;
+        sumUsed += r.samplesUsed;
+        sumSteps += r.meanSteps;
+    }
+    if (valid > 0) {
+        const double inv = 1.0 / static_cast<double>(valid);
+        s.rmse = std::sqrt(sumSq * inv);
+        s.mae = sumAbs * inv;
+        s.meanStdError = sumStd * inv;
+        s.meanSampleVariance = sumVar * inv;
+        s.meanPredictedSamples = sumPred * inv;
+        s.meanSamplesUsed = sumUsed * inv;
+        s.meanSteps = sumSteps * inv;
+    }
+    return s;
+}
+
+void RunVarianceAdaptiveMethod(const WoStKernel& kernel,
+                               const CliOptions& opts,
+                               const BoundarySetup& boundary,
+                               const std::vector<vec3>& queries,
+                               const std::string& method,
+                               int fixedSamples,
+                               float targetStdError,
+                               bool writePoints,
+                               const std::string& pointPath,
+                               std::vector<VarianceSummary>& summaries) {
+    const bool adaptive = fixedSamples <= 0;
+    std::vector<VariancePointRow> rows(queries.size());
+    int valid = 0;
+    const auto t0 = std::chrono::high_resolution_clock::now();
+
+#pragma omp parallel for schedule(dynamic, 64)
+    for (int i = 0; i < static_cast<int>(queries.size()); ++i) {
+        const vec3 point = queries[i];
+        VariancePointRow row;
+        row.pointId = i;
+        row.pos = point;
+        row.exact = LinearExact(point);
+        if (!kernel.InDomain(point)) {
+            rows[i] = row;
+            continue;
+        }
+
+        int predicted = fixedSamples;
+        uint32_t seed = SeedFor(opts.seed, static_cast<uint64_t>(i), 0xF00Du);
+        if (adaptive) {
+            WoStParams pilot = BaseLinearParams();
+            pilot.numSamples = opts.pilotSamples;
+            pilot.eps = opts.epsilon;
+            pilot.seed = seed;
+            pilot.maxSteps = opts.boundaryMode == "neumann" ? 2048 : 512;
+            WalkResult pilotResult = kernel.SolvePoisson(point, boundary.gInner, boundary.isInnerNeumann,
+                                                         boundary.hInner, boundary.gOuter, boundary.source, pilot);
+            const double denom = std::max(static_cast<double>(targetStdError) * targetStdError, 1e-12);
+            predicted = static_cast<int>(std::ceil(static_cast<double>(pilotResult.sampleVariance) / denom));
+            predicted = std::clamp(predicted, opts.minSamples, opts.maxSamples);
+        }
+
+        WoStParams p = BaseLinearParams();
+        p.numSamples = predicted;
+        p.eps = opts.epsilon;
+        p.seed = seed;
+        p.maxSteps = opts.boundaryMode == "neumann" ? 2048 : 512;
+        p.useAntitheticSampling = opts.useAntithetic;
+        WalkResult r = kernel.SolvePoisson(point, boundary.gInner, boundary.isInnerNeumann,
+                                           boundary.hInner, boundary.gOuter, boundary.source, p);
+        row.value = r.value;
+        row.absError = std::abs(r.value - row.exact);
+        row.stdError = r.stdErr;
+        row.sampleVariance = r.sampleVariance;
+        row.predictedSamples = predicted;
+        row.samplesUsed = r.samplesUsed;
+        row.meanSteps = r.meanSteps;
+        row.valid = true;
+        rows[i] = row;
+    }
+
+    const auto t1 = std::chrono::high_resolution_clock::now();
+    const double elapsed = std::chrono::duration<double>(t1 - t0).count();
+    for (const auto& r : rows) if (r.valid) ++valid;
+
+    summaries.push_back(AccumulateVarianceSummary(method, opts, valid, elapsed, rows, targetStdError));
+    if (writePoints) {
+        WriteVariancePointsCsv(pointPath, rows);
+    }
+
+    const auto& s = summaries.back();
+    std::cout << "\n=== variance_adaptive / " << method << " ===\n"
+              << "valid: " << s.validPoints << " / " << s.queries
+              << "  RMSE: " << s.rmse
+              << "  mean_samples: " << s.meanSamplesUsed
+              << "  runtime_seconds: " << s.runtimeSeconds << "\n";
+}
+
+void RunVarianceAdaptive(const WoStKernel& kernel, const CliOptions& opts) {
+    const BoundarySetup boundary = BoundaryFromMode(opts.boundaryMode);
+    const std::string pointsPath = opts.outPath.empty() ? "results/variance_adaptive_points.csv" : opts.outPath;
+    const std::string summaryPath = opts.summaryOut == "results/live_demo_summary.csv"
+        ? "results/variance_adaptive_summary.csv"
+        : opts.summaryOut;
+    const std::string comparisonPath = opts.csvPath.empty()
+        ? "results/variance_adaptive_comparison.csv"
+        : opts.csvPath;
+    const std::vector<vec3> queries = GenerateQueryPoints(opts.numQueryPoints, opts.cubeHalfExtent, opts.seed ^ 0xA9A9u);
+    std::vector<VarianceSummary> summaries;
+
+    RunVarianceAdaptiveMethod(kernel, opts, boundary, queries, "fixed_256", 256, 0.0f, false, pointsPath, summaries);
+    RunVarianceAdaptiveMethod(kernel, opts, boundary, queries, "fixed_512", 512, 0.0f, false, pointsPath, summaries);
+    RunVarianceAdaptiveMethod(kernel, opts, boundary, queries, "fixed_1024", 1024, 0.0f, false, pointsPath, summaries);
+
+    std::vector<float> taus = {0.003f, 0.005f, 0.008f};
+    bool hasRequestedTau = false;
+    for (float tau : taus) {
+        if (std::abs(tau - opts.targetStdError) < 1e-7f) hasRequestedTau = true;
+    }
+    if (!hasRequestedTau) taus.push_back(opts.targetStdError);
+    for (float tau : taus) {
+        std::ostringstream method;
+        method << "variance_adaptive_tau_" << std::fixed << std::setprecision(3) << tau;
+        const bool writePoints = std::abs(tau - opts.targetStdError) < 1e-7f;
+        RunVarianceAdaptiveMethod(kernel, opts, boundary, queries, method.str(), 0, tau,
+                                  writePoints, pointsPath, summaries);
+    }
+
+    WriteVarianceSummaryCsv(summaryPath, summaries);
+    WriteVarianceSummaryCsv(comparisonPath, summaries);
+    std::cout << "wrote " << pointsPath << "\n"
+              << "wrote " << summaryPath << "\n"
+              << "wrote " << comparisonPath << "\n";
+}
+
 void RunAdaptiveComparison(const WoStKernel& kernel, const CliOptions& opts, const std::string& meshName) {
     const BoundarySetup boundary = MakeLinearDirichletProblem();
     for (int rep = 0; rep < 3; ++rep) {
@@ -1371,7 +1953,9 @@ int main(int argc, char** argv) {
         mode != "geometry" && mode != "adaptive_compare" &&
         mode != "antithetic" && mode != "lazy" &&
         mode != "epsilon_extrapolation" && mode != "neumann_sanity" &&
-        mode != "optimization" && mode != "all") {
+        mode != "optimization" && mode != "demo_point" &&
+        mode != "bias_detector" && mode != "variance_adaptive" &&
+        mode != "all") {
         std::cerr << "Unknown mode: " << mode << "\n";
         PrintUsage(argv[0]);
         return 1;
@@ -1388,12 +1972,31 @@ int main(int argc, char** argv) {
               << "adaptive min/max/batch: " << opts.minSamples << " / "
               << opts.maxSamples << " / " << opts.batchSize
               << "  target_rse: " << opts.targetRSE
-              << "  rse_eps: " << opts.rseEps << "\n";
+              << "  rse_eps: " << opts.rseEps << "\n"
+              << "demo boundary: " << opts.boundaryMode
+              << "  walks: " << opts.walks
+              << "  epsilon: " << opts.epsilon << "\n";
 
     WoStGeometryBackend interior(opts.objFile);
     CubeOuterBoundary exterior({-opts.cubeHalfExtent, -opts.cubeHalfExtent, -opts.cubeHalfExtent},
                                { opts.cubeHalfExtent,  opts.cubeHalfExtent,  opts.cubeHalfExtent});
     WoStKernel kernel(interior, exterior);
+
+    if (mode == "demo_point") {
+        RunDemoPoint(kernel, opts);
+        std::cout << "\nDemo outputs written under results/.\n";
+        return 0;
+    }
+    if (mode == "bias_detector") {
+        RunBiasDetector(kernel, opts);
+        std::cout << "\nBoundary-bias outputs written under results/.\n";
+        return 0;
+    }
+    if (mode == "variance_adaptive") {
+        RunVarianceAdaptive(kernel, opts);
+        std::cout << "\nVariance-adaptive outputs written under results/.\n";
+        return 0;
+    }
 
     if (mode == "convergence" || mode == "all") {
         RunConvergence(kernel, opts, opts.objFile);

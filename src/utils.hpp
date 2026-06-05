@@ -35,6 +35,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <string>
 
 
 using vec3 = tinybvh::bvhvec3;
@@ -118,6 +119,15 @@ struct WalkResult {
     uint64_t starQueries = 0;
     uint64_t fastOnlyStarQueries = 0;
     uint64_t exactStarQueries = 0;
+};
+
+struct WalkTraceRow {
+    int walkId = 0;
+    int stepId = 0;
+    vec3 pos{};
+    float radius = 0.f;
+    std::string eventType = "start";
+    std::string boundaryType = "none";
 };
 
 struct FastRNG {

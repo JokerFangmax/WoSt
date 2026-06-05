@@ -333,7 +333,7 @@ Four Python/NumPy modules:
 
 \begin{center}
   {\LARGE\bfseries\color{accent} Experimental Results \& Conclusions}\\[4pt]
-  {\large Bunny benchmark, Zombie baseline, and WoSt optimization diagnostics}
+  {\large From baseline reproduction to a self-diagnostic WoSt solver}
 \end{center}
 
 \vspace{6pt}
@@ -345,18 +345,18 @@ Four Python/NumPy modules:
 \begin{tcolorbox}[colback=lightbg,colframe=accent,boxrule=0.5pt,arc=2pt,left=6pt,right=6pt,top=4pt,bottom=4pt]
 \textbf{Geometry:} Stanford Bunny with \textbf{70,580 triangles} inside an outer cube $[-0.22,0.22]^3$.\\
 \textbf{Ground truth:} $u(x,y,z)=x+y+z$, $\Delta u=0$.\\
-\textbf{Tests:} Dirichlet-only Bunny, mixed Neumann Bunny, and WoSt-only optimization diagnostics.\\
-\textbf{Metrics:} RMSE, MAE, mean walk steps, samples used, runtime, and geometry-query throughput.
+\textbf{Baselines:} Zombie open-source Walk-on-Stars implementation and fixed-sample WoSt.\\
+\textbf{Metrics:} RMSE, MAE, standard error, mean walk steps, samples used, runtime, and bias indicators.
 \end{tcolorbox}
 
 %==============================================================================
-\section{1. Accuracy: WoSt Matches Zombie on Dirichlet}
+\section{1. Accuracy: WoSt Agrees with Zombie on Dirichlet}
 %==============================================================================
 
 \begin{center}
 \begin{tabular}{>{\bfseries}lccc}
 \toprule
-Dirichlet, $\varepsilon=10^{-4}$ & Zombie RMSE & WoSt RMSE & Takeaway\\
+Walks/query & Zombie RMSE & WoSt RMSE & Observation\\
 \midrule
 16 walks   & 0.03110 & 0.03042 & close, high variance\\
 256 walks  & 0.00845 & 0.00778 & MC error decreases\\
@@ -372,13 +372,13 @@ Dirichlet, $\varepsilon=10^{-4}$ & Zombie RMSE & WoSt RMSE & Takeaway\\
 \textbf{Analysis.} The RMSE decreases as the number of walks increases, matching the expected Monte Carlo trend $O(N^{-1/2})$.  Zombie is faster in this Dirichlet solve-loop benchmark, but WoSt is slightly more accurate in the fresh Bunny run.
 
 %==============================================================================
-\section{2. Mixed Neumann: Comparable Accuracy, Shorter WoSt Paths}
+\section{2. Mixed Neumann: WoSt Uses Much Shorter Paths}
 %==============================================================================
 
 \begin{center}
 \begin{tabular}{>{\bfseries}lcccc}
 \toprule
-Neumann, $\varepsilon=10^{-4}$ & Zombie RMSE & WoSt RMSE & Zombie steps & WoSt steps\\
+Walks/query & Zombie RMSE & WoSt RMSE & Zombie steps & WoSt steps\\
 \midrule
 16 walks   & 0.04048 & 0.04140 & 282.19 & 30.93\\
 256 walks  & 0.01726 & 0.01308 & 238.82 & 34.46\\
@@ -394,7 +394,7 @@ Neumann, $\varepsilon=10^{-4}$ & Zombie RMSE & WoSt RMSE & Zombie steps & WoSt s
 \textbf{Analysis.} Both solvers converge with more walks.  The key difference is path behavior: Zombie uses much longer reflected paths, while WoSt achieves comparable or better high-sample RMSE with far fewer mean steps.  This explains why WoSt is faster on the mixed Neumann grid.
 
 %==============================================================================
-\section{3. Boundary Bias: Epsilon Is Crucial for Neumann}
+\section{3. Boundary Bias: Epsilon Controls Neumann Reliability}
 %==============================================================================
 
 \begin{center}
@@ -414,64 +414,70 @@ $10^{-5}$ & 0.01418 & 0.01398 & 257.10 & 48.88\\
 \includegraphics[width=0.72\textwidth]{experiments/final_report_figures/formal_neumann_epsilon_tradeoff_comparison.png}
 \end{center}
 
-\textbf{Analysis.} WoSt is very fast at coarse $\varepsilon$, but $\varepsilon=10^{-2}$ produces large Neumann boundary bias.  Tightening to $10^{-4}$ removes most of this bias while keeping WoSt faster than Zombie.  This motivates epsilon extrapolation and adaptive epsilon refinement near complex Neumann boundaries.
+\textbf{Analysis.} WoSt is very fast at coarse $\varepsilon$, but $\varepsilon=10^{-2}$ produces large Neumann boundary bias.  Tightening to $10^{-4}$ removes most of this bias while keeping WoSt faster than Zombie.  This directly motivates our new boundary-bias detector.
 
 %==============================================================================
-\section{4. Geometry and Optimization Diagnostics}
+\section{4. Innovation: Self-Diagnostic WoSt}
 %==============================================================================
 
 \begin{center}
 \begin{tabular}{>{\bfseries}lccc}
 \toprule
-Geometry backend & Queries & Queries/s & Note\\
+Diagnostic mode & Key output & Quantitative result & Why it matters\\
 \midrule
-WoSt tiny\_bvh   & 500 & 338,364 & fastest measured path\\
-Zombie FCPW BVH  & 500 & 265,788 & Python-loop query path\\
-WoSt brute force & 500 & 5,417   & baseline only\\
+Walk Path Debugger & traced paths & 64 walks in 0.0509s & makes WoSt visually explainable\\
+Bias Detector & $|u_\varepsilon-u_{\varepsilon/2}|$ grid & mean bias 0.00601 & flags epsilon-sensitive regions\\
+Variance Adaptive & pilot variance allocation & samples 1024 $\to$ 562 & reduces cost with controlled RMSE\\
 \bottomrule
 \end{tabular}
 \end{center}
 
 \begin{center}
-\includegraphics[width=0.60\textwidth]{experiments/final_report_figures/historical_wost_bvh_vs_bruteforce.png}
+\includegraphics[width=0.47\textwidth]{experiments/final_report_figures/innovation_live_trace_plot.png}
+\includegraphics[width=0.47\textwidth]{experiments/final_report_figures/innovation_boundary_bias_detector.png}
 \end{center}
+
+\textbf{Analysis.} These modes turn WoSt from a black-box estimator into a solver that can explain its own behavior: where walks go, where $\varepsilon$ is unreliable, and where more samples are statistically justified.
+
+%==============================================================================
+\section{5. Variance-Predicted Adaptive Sampling Trade-off}
+%==============================================================================
 
 \begin{center}
 \begin{tabular}{>{\bfseries}lccc}
 \toprule
-WoSt optimization & Empirical result & Cost effect & Analysis\\
+Method & RMSE & Mean samples & Runtime\\
 \midrule
-Relative RSE adaptive & samples $32\!\to\!21.8$ & faster & needs tuning; RMSE rose\\
-Antithetic sampling & RMSE $0.071\!\to\!0.052$ & similar time & lowers direction variance\\
-Lazy star refinement & time $0.570\!\to\!0.069$s & much faster & same RMSE in diagnostic\\
-Normal sanity test & normal dot $\approx0.993$ & validation & Neumann sign passes\\
+fixed\_512 & 0.00549 & 512.00 & 27.03s\\
+fixed\_1024 & 0.00404 & 1024.00 & 53.97s\\
+adaptive $\tau=0.003$ & 0.00442 & 794.80 & 45.81s\\
+adaptive $\tau=0.005$ & 0.00543 & 562.48 & 33.20s\\
+adaptive $\tau=0.008$ & 0.00880 & 263.78 & 16.58s\\
 \bottomrule
 \end{tabular}
 \end{center}
 
 \begin{center}
-\includegraphics[width=0.47\textwidth]{experiments/final_report_figures/optimization_adaptive_samples_errorbars.png}
-\includegraphics[width=0.47\textwidth]{experiments/final_report_figures/optimization_antithetic_variance_errorbars.png}
-
-\includegraphics[width=0.47\textwidth]{experiments/final_report_figures/optimization_lazy_tradeoff_rmse_vs_refinement.png}
-\includegraphics[width=0.47\textwidth]{experiments/final_report_figures/optimization_neumann_normal_diagnostics.png}
+\includegraphics[width=0.47\textwidth]{experiments/final_report_figures/innovation_variance_adaptive_tradeoff.png}
+\includegraphics[width=0.47\textwidth]{experiments/final_report_figures/innovation_variance_adaptive_samples_map.png}
 \end{center}
+
+\textbf{Analysis.} The most useful live-demo setting is $\tau=0.005$: it reduces average samples by about \textbf{45.1\%} relative to fixed 1024 and reduces runtime by about \textbf{38.5\%}, while RMSE rises moderately from 0.00404 to 0.00543.  The samples map shows that high-variance regions receive more walks.
 
 %==============================================================================
 \section{Conclusions}
 %==============================================================================
 
 \begin{tcolorbox}[colback=lightbg,colframe=accent,boxrule=0.5pt,arc=2pt,left=6pt,right=6pt,top=4pt,bottom=4pt]
-\textbf{Empirical evidence $\Rightarrow$ analysis:}
+\textbf{What the experiments establish:}
 \begin{itemize}
-  \item \textbf{RMSE curves decrease with walks} $\Rightarrow$ WoSt follows expected Monte Carlo convergence.
-  \item \textbf{Zombie/WoSt Dirichlet RMSE are nearly identical} $\Rightarrow$ WoSt is externally validated on complex Bunny geometry.
-  \item \textbf{Neumann epsilon sweep exposes coarse-$\varepsilon$ bias} $\Rightarrow$ boundary handling, not only random variance, controls mixed-boundary accuracy.
-  \item \textbf{WoSt mean steps are much lower in Neumann tests} $\Rightarrow$ star-radius/reflection design gives a practical runtime advantage.
-  \item \textbf{Optimization diagnostics reduce variance or geometry cost} $\Rightarrow$ antithetic sampling and lazy refinement are promising; adaptive RSE needs threshold tuning.
+  \item \textbf{Correctness:} WoSt matches Zombie on the Bunny Dirichlet benchmark and follows the expected Monte Carlo convergence trend as walks increase.
+  \item \textbf{Mixed-boundary behavior:} Neumann accuracy is controlled by both variance and boundary bias; coarse $\varepsilon$ is fast but can be unreliable.
+  \item \textbf{Efficiency:} In mixed Neumann tests, WoSt reaches competitive accuracy with much shorter mean paths than Zombie.
+  \item \textbf{Optimization-aware contribution:} walk tracing, epsilon-vs-half-epsilon bias detection, and variance-predicted sampling make the solver inspectable and tunable.
 \end{itemize}
 \end{tcolorbox}
 
-\textbf{Final takeaway.} WoSt is accurate on the clean Bunny Dirichlet benchmark, competitive with Zombie on mixed Neumann accuracy, faster for practical Neumann epsilon values, and now includes diagnostics for variance reduction, lazy geometric refinement, boundary-bias detection, and Neumann normal validation.
+\textbf{Final takeaway.} Our project goes beyond reproducing Walk-on-Stars: it turns WoSt into a \textbf{self-diagnostic and optimization-aware solver} for complex mesh domains.  The solver not only estimates the PDE solution, but also reveals where walks go, where boundary bias appears, and where additional samples are statistically worth spending.
 
 \end{document}

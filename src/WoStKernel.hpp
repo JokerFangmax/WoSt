@@ -4,6 +4,7 @@
 #include "WoStGeometryBackend.hpp"
 #include "CubeOuterBoundary.hpp"
 #include "utils.hpp"
+#include <vector>
 
 namespace wost {
 
@@ -29,6 +30,15 @@ public:
                             const DirichletFn&   g_outer,
                             const SourceFn&      f,
                             const WoStParams&    p = {}) const;
+
+    std::vector<WalkTraceRow> TraceWalks(const vec3&          x,
+                                         const DirichletFn&   g_inner,
+                                         const NeumannPredFn& is_inner_neumann,
+                                         const NeumannFn&     h_inner,
+                                         const DirichletFn&   g_outer,
+                                         const SourceFn&      f,
+                                         const WoStParams&    p,
+                                         int                 traceWalks) const;
 
 private:
     static BoundaryPoint makeCubeBP(const vec3& origin,

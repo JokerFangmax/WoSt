@@ -1,6 +1,6 @@
 # Final Integrated Report: WoSt Optimization and Zombie Baseline Comparison
 
-Generated on 2026-06-02.
+Generated on 2026-06-02. Updated with final innovation demo results on 2026-06-03.
 
 This final report integrates three sources:
 
@@ -65,6 +65,8 @@ experiments/figures/
 4. Zombie is more stable at very coarse Neumann epsilon values, especially `epsilon=1e-2`, while WoSt shows large boundary bias at that coarse tolerance.
 5. WoSt now includes additional optimization features and diagnostics: relative-standard-error adaptive sampling, antithetic sampling, lazy star-radius refinement statistics, Common Random Numbers, epsilon extrapolation, and a Neumann normal-convention sanity test.
 6. The old absolute-standard-error adaptive criterion does not significantly reduce samples on the formal Bunny Dirichlet setup. The new relative-standard-error adaptive criterion reduces samples in the smoke optimization experiment, but at the tested aggressive setting it increases error; it should be tuned for full-scale production experiments.
+7. The final live-demo additions reposition the implementation as a self-diagnostic solver: it can visualize individual walk paths, detect epsilon-sensitive regions by comparing `u_epsilon` and `u_epsilon/2`, and allocate samples from pilot variance estimates.
+8. In the formal variance-predicted adaptive run, `tau=0.005` reduced mean samples from `1024` to `562.48` and runtime from `53.97s` to `33.20s`, while RMSE changed from `0.00404` to `0.00543`.
 
 Recommended final wording:
 
@@ -84,6 +86,7 @@ This folder includes:
 
 - fresh formal comparison figures from `experiments/formal_zombie_dirichlet/` and `experiments/formal_zombie_neumann/`
 - WoSt optimization figures from `experiments/figures/`
+- final innovation-demo figures copied from `results/formal_innovation_demo_20260603/`
 - historical reference figures mentioned in `ZOMBIE_VS_WOST_FINAL_REPORT.md`
 
 ## 3. Formal Dirichlet Comparison
@@ -420,31 +423,166 @@ Neumann normal convention figures:
 
 ![WoSt Neumann sanity RMSE with error bars](final_report_figures/optimization_neumann_sanity_rmse_errorbars.png)
 
-## 7. Historical Reference Figures from Zombie Final Report
+## 7. Final Innovation Demo Results
+
+The following results were generated after adding the final live-demo and self-diagnostic modes. They support the updated project framing:
+
+```text
+A Self-Diagnostic and Optimization-Aware Walk-on-Stars Solver for Complex Mesh Domains
+```
+
+Archived output folder:
+
+```text
+results/formal_innovation_demo_20260603/
+```
+
+### 7.1 Walk Path Debugger / Live Demo
+
+Command summary:
+
+```text
+mode = demo_point
+boundary = dirichlet
+point = (0.05, 0.02, 0.08)
+walks = 64
+trace_walks = 8
+epsilon = 1e-4
+seed = 12345
+```
+
+Result:
+
+| Quantity | Value |
+|---|---:|
+| Estimated value | 0.155492 |
+| Exact value | 0.150000 |
+| Absolute error | 0.005492 |
+| Standard error | 0.023233 |
+| Mean steps | 27.921875 |
+| Runtime | 0.0509 s |
+| Samples used | 64 |
+
+Interpretation:
+
+- The mode is fast enough for live presentation.
+- The trace makes the random walk process visible rather than leaving WoSt as a black-box estimator.
+- The summary links the visual trace to quantitative Monte Carlo diagnostics.
+
+![Innovation live walk trace](final_report_figures/innovation_live_trace_plot.png)
+
+### 7.2 Boundary Bias Detector
+
+The boundary-bias detector compares:
+
+```text
+u_epsilon(x) and u_epsilon/2(x)
+bias_indicator = |u_epsilon - u_epsilon/2|
+normalized_bias = bias_indicator / (stdErr_epsilon + stdErr_epsilon_half + 1e-6)
+```
+
+Formal demo configuration:
+
+```text
+boundary = dirichlet
+epsilon = 1e-3
+epsilon_half = 5e-4
+walks = 128
+grid = 16^3
+bias_threshold = 2.0
+```
+
+Result:
+
+| Quantity | Value |
+|---|---:|
+| Valid points | 4018 / 4096 |
+| Mean bias | 0.006007 |
+| Max bias | 0.064630 |
+| Mean normalized bias | 0.246161 |
+| High-bias point count | 0 |
+| High-bias ratio | 0.000 |
+| RMSE at epsilon | 0.010453 |
+| RMSE at epsilon/2 | 0.010230 |
+| Runtime | 85.21 s |
+
+Interpretation:
+
+- This run demonstrates the diagnostic mechanism on the Dirichlet Bunny grid.
+- The low normalized-bias values indicate that, for this configuration, the epsilon sensitivity is mostly within Monte Carlo noise.
+- The same detector is especially important for mixed Neumann cases, where the formal epsilon sweep showed large coarse-epsilon boundary bias.
+- The requested `grid=32, walks=256` setting was too slow for this machine during live preparation, so the report uses the lighter `grid=16, walks=128` formal demo setting while preserving the same output fields and interpretation.
+
+![Innovation boundary bias detector](final_report_figures/innovation_boundary_bias_detector.png)
+
+### 7.3 Variance-Predicted Adaptive Sampling
+
+This mode estimates pilot variance with `M_pilot=32`, predicts the sample count using:
+
+```text
+M_i = ceil(variance_i / tau^2)
+M_i is clamped to [32, 1024]
+```
+
+Formal configuration:
+
+```text
+queries = 500
+valid points = 490
+epsilon = 1e-4
+pilot_samples = 32
+min_samples = 32
+max_samples = 1024
+```
+
+Comparison:
+
+| Method | RMSE | MAE | Mean samples | Runtime (s) |
+|---|---:|---:|---:|---:|
+| fixed_256 | 0.008607 | 0.006176 | 256.00 | 13.50 |
+| fixed_512 | 0.005489 | 0.004034 | 512.00 | 27.03 |
+| fixed_1024 | 0.004040 | 0.002918 | 1024.00 | 53.97 |
+| variance_adaptive_tau_0.003 | 0.004419 | 0.003335 | 794.80 | 45.81 |
+| variance_adaptive_tau_0.005 | 0.005426 | 0.004211 | 562.48 | 33.20 |
+| variance_adaptive_tau_0.008 | 0.008798 | 0.006482 | 263.78 | 16.58 |
+
+Interpretation:
+
+- `tau=0.005` is the most presentation-friendly trade-off: it reduces mean samples from `1024` to `562.48`, a reduction of about `45.1%`.
+- Runtime drops from `53.97s` to `33.20s`, about `38.5%` faster than fixed_1024.
+- RMSE increases from `0.00404` to `0.00543`, which is a visible but controlled accuracy-cost trade-off.
+- `tau=0.003` stays close to fixed_1024 accuracy with fewer samples, while `tau=0.008` is faster but too noisy for high-accuracy reporting.
+- The samples map and variance/sample scatter plot show the intended behavior: higher-variance points receive more predicted samples.
+
+![Innovation variance-adaptive trade-off](final_report_figures/innovation_variance_adaptive_tradeoff.png)
+
+![Innovation variance-adaptive samples map](final_report_figures/innovation_variance_adaptive_samples_map.png)
+
+## 8. Historical Reference Figures from Zombie Final Report
 
 The fresh formal comparison above is the primary quantitative source. The following figures are included because they were referenced in the earlier Zombie final report and are useful visual context.
 
-### 7.1 Historical Dirichlet Figures
+### 8.1 Historical Dirichlet Figures
 
 | Zombie baseline | WoSt reference |
 |---|---|
 | ![Historical Zombie Dirichlet RMSE](final_report_figures/historical_zombie_dirichlet_rmse_vs_walks.png) | ![Historical WoSt Dirichlet RMSE](final_report_figures/historical_wost_dirichlet_rmse_vs_walks.png) |
 | ![Historical Zombie Dirichlet epsilon](final_report_figures/historical_zombie_dirichlet_epsilon_tradeoff.png) | ![Historical WoSt Dirichlet epsilon](final_report_figures/historical_wost_dirichlet_epsilon_tradeoff.png) |
 
-### 7.2 Historical Neumann Figures
+### 8.2 Historical Neumann Figures
 
 | Zombie baseline | WoSt reference |
 |---|---|
 | ![Historical Zombie Neumann RMSE](final_report_figures/historical_zombie_neumann_rmse_vs_walks.png) | ![Historical WoSt Neumann RMSE](final_report_figures/historical_wost_neumann_rmse_vs_walks.png) |
 | ![Historical Zombie Neumann epsilon](final_report_figures/historical_zombie_neumann_epsilon_tradeoff.png) | ![Historical WoSt Neumann epsilon](final_report_figures/historical_wost_neumann_epsilon_tradeoff.png) |
 
-### 7.3 Historical WoSt-Only Figures
+### 8.3 Historical WoSt-Only Figures
 
 ![Historical WoSt thread speedup](final_report_figures/historical_wost_thread_speedup.png)
 
 ![Historical WoSt adaptive vs fixed](final_report_figures/historical_wost_adaptive_vs_fixed.png)
 
-## 8. Limitations and Careful Claims
+## 9. Limitations and Careful Claims
 
 Safe claims:
 
@@ -454,6 +592,7 @@ Safe claims:
 - Mixed Neumann behavior is more implementation-sensitive than Dirichlet behavior.
 - WoSt's Neumann implementation is faster than Zombie at practical epsilon values in the fresh formal run.
 - WoSt now includes meaningful optimization diagnostics for adaptive sampling, antithetic sampling, lazy refinement, CRN, epsilon sensitivity, and normal convention.
+- WoSt now includes presentation-ready self-diagnostic modes: walk-path tracing, boundary-bias detection, and variance-predicted sample allocation.
 
 Avoid overclaiming:
 
@@ -461,16 +600,17 @@ Avoid overclaiming:
 - Do not claim perfect linear speedup unless the thread sweep supports it for the target machine and workload.
 - Do not treat the Zombie FCPW vs WoSt tiny_bvh timing as a pure backend-only comparison, because Zombie timing is measured through Python-loop calls.
 - Do not claim that relative-standard-error adaptive sampling is fully tuned for Bunny-scale production until a full-size tuned run is completed.
+- Do not claim the boundary-bias detector's `grid=32, walks=256` setting finished on this machine; the report uses the completed `grid=16, walks=128` formal demo run.
 
-## 9. Final Summary
+## 10. Final Summary
 
 The final combined evidence supports the following project story:
 
 ```text
-WoSt is accurate on the clean Dirichlet Bunny benchmark and agrees closely with the Zombie baseline. The method also supports mixed Neumann boundaries, validated first with a sphere/cube normal-convention sanity test and then benchmarked on Bunny. Compared with Zombie, WoSt is slightly more accurate but slower in the Dirichlet solve-loop formal run; in the mixed Neumann formal run, WoSt is faster and competitive or better at practical epsilon values because it uses much shorter reflected paths. Additional WoSt optimization experiments show that relative-standard-error adaptive sampling can reduce sample counts, antithetic sampling can reduce variance, and lazy star-radius refinement can dramatically reduce geometric query cost without changing RMSE in the tested diagnostic configuration.
+WoSt is accurate on the clean Dirichlet Bunny benchmark and agrees closely with the Zombie baseline. The method also supports mixed Neumann boundaries, validated first with a sphere/cube normal-convention sanity test and then benchmarked on Bunny. Compared with Zombie, WoSt is slightly more accurate but slower in the Dirichlet solve-loop formal run; in the mixed Neumann formal run, WoSt is faster and competitive or better at practical epsilon values because it uses much shorter reflected paths. Additional WoSt optimization experiments show that relative-standard-error adaptive sampling can reduce sample counts, antithetic sampling can reduce variance, and lazy star-radius refinement can dramatically reduce geometric query cost without changing RMSE in the tested diagnostic configuration. The final innovation demo extends the project beyond reproduction: the solver can visualize walk paths, diagnose epsilon-sensitive boundary regions, and allocate samples using pilot variance predictions.
 ```
 
-## 10. Key Files
+## 11. Key Files
 
 Reports:
 
@@ -505,6 +645,31 @@ experiments/figures/lazy_refinement_ratio_errorbars.png
 experiments/figures/lazy_tradeoff_rmse_vs_refinement.png
 experiments/figures/epsilon_sensitivity_histogram.png
 experiments/figures/neumann_normal_diagnostics.png
+```
+
+Final innovation demo outputs:
+
+```text
+results/formal_innovation_demo_20260603/live_trace.csv
+results/formal_innovation_demo_20260603/live_demo_summary.csv
+results/formal_innovation_demo_20260603/live_trace_plot.png
+results/formal_innovation_demo_20260603/boundary_bias_detector.vtk
+results/formal_innovation_demo_20260603/boundary_bias_summary.csv
+results/formal_innovation_demo_20260603/boundary_bias_detector.png
+results/formal_innovation_demo_20260603/variance_adaptive_points.csv
+results/formal_innovation_demo_20260603/variance_adaptive_summary.csv
+results/formal_innovation_demo_20260603/variance_adaptive_comparison.csv
+results/formal_innovation_demo_20260603/variance_adaptive_tradeoff.png
+results/formal_innovation_demo_20260603/variance_adaptive_samples_map.png
+```
+
+Final innovation demo figures included in this report:
+
+```text
+experiments/final_report_figures/innovation_live_trace_plot.png
+experiments/final_report_figures/innovation_boundary_bias_detector.png
+experiments/final_report_figures/innovation_variance_adaptive_tradeoff.png
+experiments/final_report_figures/innovation_variance_adaptive_samples_map.png
 ```
 
 Integrated local figure folder:

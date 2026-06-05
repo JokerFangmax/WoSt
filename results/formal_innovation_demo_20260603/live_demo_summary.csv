@@ -1,0 +1,2 @@
+boundary,seed,walks,trace_walks,epsilon,estimated_value,exact_value,absolute_error,standard_error,sample_variance,mean_steps,runtime_seconds,samples_used,any_diverged
+dirichlet,12345,64,8,9.99999975e-05,0.155491993,0.150000006,0.00549198687,0.0232331119,0.0345457569,27.921875,0.0508733,64,0
