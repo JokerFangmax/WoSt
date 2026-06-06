@@ -1,0 +1,45 @@
+{
+  "run_mode": "smoke",
+  "mesh": "obj/Bunny.obj",
+  "mesh_name": "Bunny",
+  "outer_cube": 0.22,
+  "boundary": "mixed_neumann",
+  "analytic_solution": "u(x,y,z)=x+y+z",
+  "neumann_condition": "h=(1,1,1) dot n",
+  "queries": 20,
+  "grid": 8,
+  "walks": [
+    16,
+    64
+  ],
+  "epsilons": [
+    0.01,
+    0.001
+  ],
+  "adaptive_tau": [
+    0.005
+  ],
+  "seeds": [
+    0
+  ],
+  "threads": 4,
+  "pilot_samples": 8,
+  "min_samples": 8,
+  "max_samples": 64,
+  "batch_size": 8,
+  "bias_threshold": 2.0,
+  "run_zombie": false,
+  "zombie_dirichlet_csv": "",
+  "zombie_neumann_csv": "",
+  "run_bvh": true,
+  "run_path_debugger": true,
+  "run_optimization": true,
+  "run_geometry_analysis": true,
+  "verify_build": true,
+  "live_point": [
+    0.05,
+    0.02,
+    0.08
+  ],
+  "output": "experiments/bunny_smoke"
+}

@@ -1,0 +1,3 @@
+benchmark_name,mesh_name,num_query_points,valid_points,walks_per_point,epsilon,max_steps,num_threads,elapsed_seconds,points_per_second,walks_per_second,rmse,mae,max_abs_error,mean_std_error,mean_steps,diverged_count,mean_samples_used,accuracy_seed,boundary_mode
+case_mixed_neumann,C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj,20,19,16,0.00100000005,2048,4,0.2012677,99.3701423527,1510.42616376,0.0960680124639,0.0576971134073,0.280929937959,0.0352782932551,16.0657894737,0,16,0,neumann
+case_mixed_neumann,C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj,20,19,64,0.00100000005,2048,4,0.8939659,22.3722180007,1360.23085444,0.0728849638871,0.0347291135205,0.271531179547,0.017792663733,16.5131578947,0,64,0,neumann

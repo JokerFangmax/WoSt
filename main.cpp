@@ -179,6 +179,8 @@ BoundarySetup MakeLinearInnerNeumannProblem() {
     return b;
 }
 
+BoundarySetup BoundaryFromMode(const std::string& mode);
+
 vec3 RandomPointInCube(FastRNG& rng, float L) {
     return {
         rng.randFloat() * 2.0f * L - L,
@@ -226,7 +228,7 @@ std::string ResolveObjPath(const std::string& requested) {
 
 void PrintUsage(const char* exe) {
     std::cout
-        << "Usage: " << exe << " [--mode convergence|epsilon|grid|adaptive|neumann|threads|geometry|"
+        << "Usage: " << exe << " [--mode convergence|epsilon|grid|adaptive|neumann|threads|geometry|case|"
         << "adaptive_compare|antithetic|lazy|epsilon_extrapolation|neumann_sanity|optimization|"
         << "demo_point|bias_detector|variance_adaptive|all] "
         << "[--obj path] [--queries N] [--grid N] [--threads N] [--seed N] [--cube L]\n"
@@ -1090,6 +1092,20 @@ void RunEpsilonSweep(const WoStKernel& kernel, const CliOptions& opts, const std
     }
 }
 
+void RunSingleCaseBenchmark(const WoStKernel& kernel, const CliOptions& opts, const std::string& meshName) {
+    const BoundarySetup boundary = BoundaryFromMode(opts.boundaryMode);
+    WoStParams p = BaseLinearParams();
+    p.numSamples = opts.walks;
+    p.eps = opts.epsilon;
+    p.maxSteps = opts.boundaryMode == "neumann" ? 2048 : 512;
+
+    const std::string name = opts.boundaryMode == "neumann"
+        ? "case_mixed_neumann"
+        : "case_dirichlet";
+    RunPointBenchmark(kernel, meshName, name, opts.numQueryPoints, p,
+                      opts.seed ^ 0xCA5E0001u, opts.cubeHalfExtent, boundary);
+}
+
 void RunNeumannBenchmark(const WoStKernel& kernel, const CliOptions& opts, const std::string& meshName) {
     namespace fs = std::filesystem;
     fs::create_directories("results");
@@ -1390,22 +1406,42 @@ void RunBiasDetector(const WoStKernel& kernel, const CliOptions& opts) {
     double sumNorm = 0.0;
     double sumSqEps = 0.0;
     double sumSqHalf = 0.0;
+    std::vector<float> biasValues;
+    std::vector<float> normalizedBiasValues;
     for (const auto& g : grid) {
         if (!g.valid) continue;
         ++valid;
         sumBias += g.bias;
         maxBias = std::max(maxBias, static_cast<double>(g.bias));
         sumNorm += g.normalizedBias;
+        biasValues.push_back(g.bias);
+        normalizedBiasValues.push_back(g.normalizedBias);
         sumSqEps += static_cast<double>(g.absErrEps) * g.absErrEps;
         sumSqHalf += static_cast<double>(g.absErrHalf) * g.absErrHalf;
         if (g.normalizedBias > opts.biasThreshold) ++highBias;
     }
+    auto percentile = [](std::vector<float> values, double pct) -> double {
+        if (values.empty()) return 0.0;
+        std::sort(values.begin(), values.end());
+        const double pos = (pct / 100.0) * static_cast<double>(values.size() - 1);
+        const size_t lo = static_cast<size_t>(std::floor(pos));
+        const size_t hi = static_cast<size_t>(std::ceil(pos));
+        if (lo == hi) return values[lo];
+        const double t = pos - static_cast<double>(lo);
+        return (1.0 - t) * values[lo] + t * values[hi];
+    };
+    const double p95Bias = percentile(biasValues, 95.0);
+    const double p95Norm = percentile(normalizedBiasValues, 95.0);
+    const double maxNorm = normalizedBiasValues.empty()
+        ? 0.0
+        : *std::max_element(normalizedBiasValues.begin(), normalizedBiasValues.end());
 
     WriteBiasVTK(vtkPath, gi, grid);
     EnsureParentDirectory(csvPath);
     std::ofstream csv(csvPath);
     csv << "boundary,epsilon,epsilon_half,walks,grid,valid_points,mean_bias,max_bias,"
-        << "mean_normalized_bias,high_bias_point_count,high_bias_ratio,rmse_epsilon,"
+        << "p95_bias,mean_normalized_bias,max_normalized_bias,p95_normalized_bias,"
+        << "high_bias_point_count,high_bias_ratio,warning_threshold_ratio,rmse_epsilon,"
         << "rmse_epsilon_half,runtime_seconds,bias_threshold\n";
     const double inv = valid > 0 ? 1.0 / static_cast<double>(valid) : 0.0;
     csv << CsvEscape(opts.boundaryMode) << ','
@@ -1416,8 +1452,12 @@ void RunBiasDetector(const WoStKernel& kernel, const CliOptions& opts) {
         << valid << ','
         << sumBias * inv << ','
         << maxBias << ','
+        << p95Bias << ','
         << sumNorm * inv << ','
+        << maxNorm << ','
+        << p95Norm << ','
         << highBias << ','
+        << (valid > 0 ? static_cast<double>(highBias) * inv : 0.0) << ','
         << (valid > 0 ? static_cast<double>(highBias) * inv : 0.0) << ','
         << (valid > 0 ? std::sqrt(sumSqEps * inv) : 0.0) << ','
         << (valid > 0 ? std::sqrt(sumSqHalf * inv) : 0.0) << ','
@@ -1950,7 +1990,7 @@ int main(int argc, char** argv) {
     const std::string mode = opts.mode;
     if (mode != "convergence" && mode != "epsilon" && mode != "grid" &&
         mode != "adaptive" && mode != "neumann" && mode != "threads" &&
-        mode != "geometry" && mode != "adaptive_compare" &&
+        mode != "geometry" && mode != "case" && mode != "adaptive_compare" &&
         mode != "antithetic" && mode != "lazy" &&
         mode != "epsilon_extrapolation" && mode != "neumann_sanity" &&
         mode != "optimization" && mode != "demo_point" &&
@@ -1995,6 +2035,10 @@ int main(int argc, char** argv) {
     if (mode == "variance_adaptive") {
         RunVarianceAdaptive(kernel, opts);
         std::cout << "\nVariance-adaptive outputs written under results/.\n";
+        return 0;
+    }
+    if (mode == "case") {
+        RunSingleCaseBenchmark(kernel, opts, opts.objFile);
         return 0;
     }
 

@@ -3,3 +3,7 @@ geometry_distance,.\obj\Bunny.obj,tiny_bvh,70580,2000,8,0.0026326,759705.234369,
 geometry_distance,.\obj\Bunny.obj,brute_force,70580,2000,8,0.358376,5580.73085251,315.041964975
 geometry_distance,.\obj\Bunny.obj,tiny_bvh,70580,3000,8,0.0037763,794428.40876,471.341955792
 geometry_distance,.\obj\Bunny.obj,brute_force,70580,3000,8,0.4862868,6169.19891718,471.341955792
+geometry_distance,C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj,tiny_bvh,70580,200,4,0.0012169,164352.042074,33.384434008
+geometry_distance,C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj,brute_force,70580,200,4,0.0637609,3136.71858459,33.384434008
+geometry_distance,C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj,tiny_bvh,70580,200,4,0.0012838,155787.505842,33.384434008
+geometry_distance,C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj,brute_force,70580,200,4,0.0577491,3463.25743605,33.384434008

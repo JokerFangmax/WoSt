@@ -1,0 +1,2 @@
+valid_points,observed_max_samples,points_at_observed_max,points_at_observed_max_ratio,warning
+20,64,18,0.9,most points hit max_samples

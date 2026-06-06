@@ -1,0 +1,3 @@
+benchmark_name,mesh_name,num_query_points,valid_points,walks_per_point,epsilon,max_steps,num_threads,elapsed_seconds,points_per_second,walks_per_second,rmse,mae,max_abs_error,mean_std_error,mean_steps,diverged_count,mean_samples_used,accuracy_seed,boundary_mode
+case_dirichlet,C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj,20,19,16,0.00100000005,512,4,0.1774011,112.738872532,1713.63086249,0.0330899774179,0.0246479987706,0.0785282254219,0.0297685734634,13.5164473684,0,16,0,dirichlet
+case_dirichlet,C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj,20,19,64,0.00100000005,512,4,0.7804366,25.6266812705,1558.10222124,0.015006846048,0.0112570154628,0.0359380245209,0.0142972838183,13.4194078947,0,64,0,dirichlet

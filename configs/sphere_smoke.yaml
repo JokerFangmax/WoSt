@@ -1,0 +1,25 @@
+run_mode: smoke
+mesh: experiments/generated/inner_sphere.obj
+mesh_name: Sphere
+outer_cube: 1.0
+boundary: mixed_neumann
+analytic_solution: u(x,y,z)=x+y+z
+neumann_condition: h=(1,1,1) dot n
+queries: 20
+grid: 8
+walks: [16, 64]
+epsilons: [1e-2, 1e-3]
+adaptive_tau: [0.005]
+seeds: [0]
+threads: 4
+pilot_samples: 8
+min_samples: 8
+max_samples: 64
+batch_size: 8
+run_zombie: false
+run_bvh: true
+run_geometry_analysis: true
+run_path_debugger: true
+run_optimization: true
+live_point: [0.5, 0.0, 0.0]
+output: experiments/sphere_smoke

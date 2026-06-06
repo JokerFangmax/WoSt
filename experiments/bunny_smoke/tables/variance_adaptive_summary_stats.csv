@@ -1,0 +1,7 @@
+method,target_std_error,n,rmse_mean,rmse_std,mean_samples_used_mean,mean_samples_used_std,mean_predicted_samples_mean,mean_predicted_samples_std,runtime_seconds_mean,runtime_seconds_std
+fixed_1024,0,1,0.0181933340432,0,1024,0,1024,0,14.5000115,0
+fixed_256,0,1,0.0153700673737,0,256,0,256,0,3.7431617,0
+fixed_512,0,1,0.0165592386273,0,512,0,512,0,7.1743397,0
+variance_adaptive_tau_0.003,0.00300000002608,1,0.0166183867027,0,61.2,0,61.2,0,1.1895591,0
+variance_adaptive_tau_0.005,0.00499999988824,1,0.0163748061237,0,59.75,0,59.75,0,1.1739855,0
+variance_adaptive_tau_0.008,0.00800000037998,1,0.0241138810077,0,55.65,0,55.65,0,0.9130297,0

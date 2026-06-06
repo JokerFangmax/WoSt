@@ -1,0 +1,3 @@
+benchmark_name,classification
+case_dirichlet,variance-dominated
+case_mixed_neumann,epsilon-bias-dominated

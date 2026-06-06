@@ -1,0 +1,29 @@
+adaptive_tau: [0.005]
+analytic_solution: u(x,y,z)=x+y+z
+batch_size: 8
+bias_threshold: 2.0
+boundary: mixed_neumann
+epsilons: [0.01, 0.001]
+grid: 8
+live_point: [0.05, 0.02, 0.08]
+max_samples: 64
+mesh: obj/Bunny.obj
+mesh_name: Bunny
+min_samples: 8
+neumann_condition: h=(1,1,1) dot n
+outer_cube: 0.22
+output: experiments/bunny_smoke
+pilot_samples: 8
+queries: 20
+run_bvh: true
+run_geometry_analysis: true
+run_mode: smoke
+run_optimization: true
+run_path_debugger: true
+run_zombie: false
+seeds: [0]
+threads: 4
+verify_build: true
+walks: [16, 64]
+zombie_dirichlet_csv: 
+zombie_neumann_csv: 

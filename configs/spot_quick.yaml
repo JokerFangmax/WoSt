@@ -1,0 +1,25 @@
+run_mode: quick
+mesh: spot/spot_triangulated.obj
+mesh_name: Spot
+outer_cube: 1.0
+boundary: mixed_neumann
+analytic_solution: u(x,y,z)=x+y+z
+neumann_condition: h=(1,1,1) dot n
+queries: 150
+grid: 12
+walks: [16, 64, 256]
+epsilons: [1e-2, 1e-3, 1e-4]
+adaptive_tau: [0.003, 0.005, 0.008]
+seeds: [0, 1, 2]
+threads: 8
+pilot_samples: 16
+min_samples: 16
+max_samples: 256
+batch_size: 16
+run_zombie: false
+run_bvh: true
+run_geometry_analysis: true
+run_path_debugger: true
+run_optimization: true
+live_point: [0.25, 0.25, 0.25]
+output: experiments/spot_quick
