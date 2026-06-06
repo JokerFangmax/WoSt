@@ -1,0 +1,2 @@
+benchmark_name,mesh_name,backend_name,triangle_count,num_queries,num_threads,elapsed_seconds,queries_per_second,checksum
+geometry_distance,C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj,zombie_fcpw_bvh,5856,500,python_loop,0.0012139000464230776,411895.5275381349,77.99419226648752

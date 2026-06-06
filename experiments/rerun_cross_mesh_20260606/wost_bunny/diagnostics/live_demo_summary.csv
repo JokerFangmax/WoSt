@@ -1,0 +1,2 @@
+boundary,seed,walks,trace_walks,epsilon,estimated_value,exact_value,absolute_error,standard_error,sample_variance,mean_steps,runtime_seconds,samples_used,any_diverged
+neumann,12345,64,8,9.99999975e-05,0.214626133,0.150000006,0.0646261275,0.0289101005,0.0534908101,75.953125,0.1434323,64,0

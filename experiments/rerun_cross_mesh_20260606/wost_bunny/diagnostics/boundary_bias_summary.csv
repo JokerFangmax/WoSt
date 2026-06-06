@@ -1,0 +1,2 @@
+boundary,epsilon,epsilon_half,walks,grid,valid_points,mean_bias,max_bias,p95_bias,mean_normalized_bias,max_normalized_bias,p95_normalized_bias,high_bias_point_count,high_bias_ratio,warning_threshold_ratio,rmse_epsilon,rmse_epsilon_half,runtime_seconds,bias_threshold
+neumann,0.00100000005,0.000500000024,128,16,4018,0.00942287094,0.199486896,0.0350369878,0.314088329,4.46985292,1.04234396,20,0.0049776008,0.0049776008,0.0324670894,0.0227972339,99.2283859,2

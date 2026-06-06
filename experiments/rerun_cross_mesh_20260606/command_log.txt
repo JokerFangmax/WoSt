@@ -1,0 +1,1575 @@
+﻿# Cross-mesh rerun command log
+started: 2026-06-06 17:06:26
+
+## WoSt bunny dirichlet convergence
+time: 2026-06-06 17:06:26
+cwd: C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode convergence --obj C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj --queries 500 --threads 8 --seed 12345 --cube 0.22
+WoSt linear Dirichlet benchmark
+mode: convergence
+obj: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+query points: 500
+grid: 48^3
+cube half extent: 0.22
+threads: 8
+seed: 12345
+adaptive min/max/batch: 64 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: dirichlet  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 70580 triangles, 105870 silhouette edges.
+
+=== convergence ===
+mesh: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+valid points: 492 / 500
+walks_per_point: 16  epsilon: 0.0001  max_steps: 512
+elapsed_seconds: 0.875673
+points_per_second: 570.99
+walks_per_second: 8989.66
+RMSE: 0.0304228  MAE: 0.0227519  max_abs_error: 0.101161
+mean_std_error: 0.0285757  mean_steps: 21.3653  mean_samples_used: 16
+diverged_count: 0
+
+=== convergence ===
+mesh: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+valid points: 492 / 500
+walks_per_point: 64  epsilon: 0.0001  max_steps: 512
+elapsed_seconds: 3.39553
+points_per_second: 147.252
+walks_per_second: 9273.36
+RMSE: 0.015701  MAE: 0.011677  max_abs_error: 0.0506318
+mean_std_error: 0.014849  mean_steps: 21.4461  mean_samples_used: 64
+diverged_count: 0
+
+=== convergence ===
+mesh: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+valid points: 492 / 500
+walks_per_point: 256  epsilon: 0.0001  max_steps: 512
+elapsed_seconds: 13.2235
+points_per_second: 37.8114
+walks_per_second: 9524.83
+RMSE: 0.00778334  MAE: 0.00568077  max_abs_error: 0.0314264
+mean_std_error: 0.00756693  mean_steps: 21.4479  mean_samples_used: 256
+diverged_count: 0
+Wrote results/linear_dirichlet_pointcloud.vtk
+
+=== convergence ===
+mesh: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+valid points: 492 / 500
+walks_per_point: 1024  epsilon: 0.0001  max_steps: 512
+elapsed_seconds: 53.8192
+points_per_second: 9.29036
+walks_per_second: 9361.12
+RMSE: 0.00398851  MAE: 0.00299202  max_abs_error: 0.0151125
+mean_std_error: 0.00379238  mean_steps: 21.4588  mean_samples_used: 1024
+diverged_count: 0
+
+Benchmark outputs written under results/. Optimization outputs written under experiments/.
+[exit=0, wall_seconds=72.685]
+
+## WoSt bunny dirichlet epsilon
+time: 2026-06-06 17:07:39
+cwd: C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode epsilon --obj C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj --queries 500 --threads 8 --seed 12345 --cube 0.22
+WoSt linear Dirichlet benchmark
+mode: epsilon
+obj: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+query points: 500
+grid: 48^3
+cube half extent: 0.22
+threads: 8
+seed: 12345
+adaptive min/max/batch: 64 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: dirichlet  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 70580 triangles, 105870 silhouette edges.
+
+=== epsilon ===
+mesh: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+valid points: 487 / 500
+walks_per_point: 256  epsilon: 0.01  max_steps: 512
+elapsed_seconds: 12.312
+points_per_second: 40.6108
+walks_per_second: 10126.1
+RMSE: 0.00857237  MAE: 0.00664924  max_abs_error: 0.0336094
+mean_std_error: 0.00657039  mean_steps: 6.24137  mean_samples_used: 256
+diverged_count: 0
+
+=== epsilon ===
+mesh: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+valid points: 487 / 500
+walks_per_point: 256  epsilon: 0.001  max_steps: 512
+elapsed_seconds: 13.1821
+points_per_second: 37.9302
+walks_per_second: 9457.66
+RMSE: 0.00806159  MAE: 0.00572455  max_abs_error: 0.0373439
+mean_std_error: 0.00733668  mean_steps: 13.7938  mean_samples_used: 256
+diverged_count: 0
+
+=== epsilon ===
+mesh: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+valid points: 487 / 500
+walks_per_point: 256  epsilon: 0.0001  max_steps: 512
+elapsed_seconds: 14.2345
+points_per_second: 35.126
+walks_per_second: 8758.47
+RMSE: 0.00780982  MAE: 0.00588333  max_abs_error: 0.0287324
+mean_std_error: 0.00735434  mean_steps: 21.3869  mean_samples_used: 256
+diverged_count: 0
+
+=== epsilon ===
+mesh: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+valid points: 487 / 500
+walks_per_point: 256  epsilon: 1e-05  max_steps: 512
+elapsed_seconds: 14.161
+points_per_second: 35.3083
+walks_per_second: 8803.92
+RMSE: 0.00764798  MAE: 0.00568741  max_abs_error: 0.0263822
+mean_std_error: 0.00736879  mean_steps: 28.8322  mean_samples_used: 256
+diverged_count: 0
+
+Benchmark outputs written under results/. Optimization outputs written under experiments/.
+[exit=0, wall_seconds=55.489]
+
+## WoSt bunny dirichlet grid
+time: 2026-06-06 17:08:35
+cwd: C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode grid --obj C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj --grid 16 --threads 8 --seed 12345 --cube 0.22
+WoSt linear Dirichlet benchmark
+mode: grid
+obj: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+query points: 20000
+grid: 16^3
+cube half extent: 0.22
+threads: 8
+seed: 12345
+adaptive min/max/batch: 64 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: dirichlet  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 70580 triangles, 105870 silhouette edges.
+
+=== linear_dirichlet_grid ===
+mesh: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+valid points: 4018 / 4096
+walks_per_point: 256  epsilon: 0.0001  max_steps: 512
+elapsed_seconds: 89.8892
+points_per_second: 45.5672
+walks_per_second: 11443.1
+RMSE: 0.00730265  MAE: 0.00455051  max_abs_error: 0.0433208
+mean_std_error: 0.00578137  mean_steps: 15.3898  mean_samples_used: 256
+diverged_count: 0
+Wrote results/linear_dirichlet_grid.vtk
+
+Benchmark outputs written under results/. Optimization outputs written under experiments/.
+[exit=0, wall_seconds=90.748]
+
+## WoSt bunny geometry benchmark
+time: 2026-06-06 17:10:06
+cwd: C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode geometry --obj C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj --queries 500 --threads 8 --seed 12345 --cube 0.22
+WoSt linear Dirichlet benchmark
+mode: geometry
+obj: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+query points: 500
+grid: 48^3
+cube half extent: 0.22
+threads: 8
+seed: 12345
+adaptive min/max/batch: 64 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: dirichlet  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 70580 triangles, 105870 silhouette edges.
+
+=== geometry_distance / tiny_bvh ===
+mesh: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+triangles: 70580
+queries: 500
+threads: 8
+elapsed_seconds: 0.0015682
+queries_per_second: 318837
+checksum: 79.7347
+
+=== geometry_distance / brute_force ===
+mesh: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+triangles: 70580
+queries: 500
+threads: 8
+elapsed_seconds: 0.0851389
+queries_per_second: 5872.76
+checksum: 79.7347
+
+Benchmark outputs written under results/. Optimization outputs written under experiments/.
+[exit=0, wall_seconds=1.042]
+
+## WoSt bunny mixed Neumann
+time: 2026-06-06 17:10:07
+cwd: C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode neumann --obj C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj --queries 100 --grid 8 --threads 8 --seed 32345 --cube 0.22
+WoSt linear Dirichlet benchmark
+mode: neumann
+obj: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+query points: 100
+grid: 8^3
+cube half extent: 0.22
+threads: 8
+seed: 32345
+adaptive min/max/batch: 64 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: dirichlet  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 70580 triangles, 105870 silhouette edges.
+
+=== neumann_convergence ===
+mesh: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+valid points: 99 / 100
+walks_per_point: 16  epsilon: 0.0001  max_steps: 2048
+elapsed_seconds: 1.09126
+points_per_second: 91.6372
+walks_per_second: 1451.53
+RMSE: 0.0413985  MAE: 0.0292251  max_abs_error: 0.137969
+mean_std_error: 0.0303855  mean_steps: 30.9261  mean_samples_used: 16
+diverged_count: 0
+
+=== neumann_convergence ===
+mesh: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+valid points: 99 / 100
+walks_per_point: 64  epsilon: 0.0001  max_steps: 2048
+elapsed_seconds: 4.57205
+points_per_second: 21.872
+walks_per_second: 1385.81
+RMSE: 0.0249695  MAE: 0.0175762  max_abs_error: 0.107605
+mean_std_error: 0.0166228  mean_steps: 33.5193  mean_samples_used: 64
+diverged_count: 0
+
+=== neumann_convergence ===
+mesh: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+valid points: 99 / 100
+walks_per_point: 256  epsilon: 0.0001  max_steps: 2048
+elapsed_seconds: 18.8183
+points_per_second: 5.31398
+walks_per_second: 1346.77
+RMSE: 0.0130824  MAE: 0.0086165  max_abs_error: 0.0675367
+mean_std_error: 0.0084143  mean_steps: 34.4567  mean_samples_used: 256
+diverged_count: 0
+Wrote results/neumann_mixed_pointcloud.vtk
+
+=== neumann_convergence ===
+mesh: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+valid points: 99 / 100
+walks_per_point: 1024  epsilon: 0.0001  max_steps: 2048
+elapsed_seconds: 78.1642
+points_per_second: 1.27936
+walks_per_second: 1296.96
+RMSE: 0.0114085  MAE: 0.00580072  max_abs_error: 0.0693901
+mean_std_error: 0.0042155  mean_steps: 34.466  mean_samples_used: 1024
+diverged_count: 0
+
+=== neumann_epsilon ===
+mesh: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+valid points: 97 / 100
+walks_per_point: 256  epsilon: 0.01  max_steps: 2048
+elapsed_seconds: 10.7616
+points_per_second: 9.29231
+walks_per_second: 2307.47
+RMSE: 0.15294  MAE: 0.0761279  max_abs_error: 0.804762
+mean_std_error: 0.0191722  mean_steps: 6.75282  mean_samples_used: 256
+diverged_count: 0
+
+=== neumann_epsilon ===
+mesh: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+valid points: 97 / 100
+walks_per_point: 256  epsilon: 0.001  max_steps: 2048
+elapsed_seconds: 12.2635
+points_per_second: 8.15426
+walks_per_second: 2024.86
+RMSE: 0.0267646  MAE: 0.0148922  max_abs_error: 0.124488
+mean_std_error: 0.00869815  mean_steps: 15.9036  mean_samples_used: 256
+diverged_count: 0
+
+=== neumann_epsilon ===
+mesh: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+valid points: 97 / 100
+walks_per_point: 256  epsilon: 0.0001  max_steps: 2048
+elapsed_seconds: 17.637
+points_per_second: 5.66988
+walks_per_second: 1407.95
+RMSE: 0.0124854  MAE: 0.00870927  max_abs_error: 0.0522016
+mean_std_error: 0.00870396  mean_steps: 32.2079  mean_samples_used: 256
+diverged_count: 0
+
+=== neumann_epsilon ===
+mesh: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+valid points: 97 / 100
+walks_per_point: 256  epsilon: 1e-05  max_steps: 2048
+elapsed_seconds: 19.6665
+points_per_second: 5.0848
+walks_per_second: 1262.66
+RMSE: 0.0139837  MAE: 0.00970265  max_abs_error: 0.0567543
+mean_std_error: 0.00870921  mean_steps: 48.879  mean_samples_used: 256
+diverged_count: 1
+
+=== neumann_mixed_grid ===
+mesh: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+valid points: 508 / 512
+walks_per_point: 256  epsilon: 0.0001  max_steps: 2048
+elapsed_seconds: 17.2429
+points_per_second: 29.6933
+walks_per_second: 7542.1
+RMSE: 0.0119632  MAE: 0.0054147  max_abs_error: 0.0839069
+mean_std_error: 0.00476331  mean_steps: 19.6191  mean_samples_used: 256
+diverged_count: 0
+Wrote results/neumann_mixed_grid.vtk
+
+Benchmark outputs written under results/. Optimization outputs written under experiments/.
+[exit=0, wall_seconds=181.617]
+
+## WoSt bunny optimization diagnostics
+time: 2026-06-06 17:13:08
+cwd: C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode optimization --obj C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj --queries 500 --threads 8 --seed 52345 --cube 0.22 --max-samples 512 --min-samples 64 --batch-size 32 --target-rse 0.05 --rse-eps 0.001
+WoSt linear Dirichlet benchmark
+mode: optimization
+obj: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+query points: 500
+grid: 48^3
+cube half extent: 0.22
+threads: 8
+seed: 52345
+adaptive min/max/batch: 64 / 512 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: dirichlet  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 70580 triangles, 105870 silhouette edges.
+
+=== adaptive_compare / fixed ===
+seed: 11390073  valid: 489 / 500
+RMSE: 0.00559623  MAE: 0.00428741  rel_error: 0.0663941
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.017471  mean std_error: 0.00542531
+refinement ratio: 0.0925745  elapsed_seconds: 27.4553
+
+=== adaptive_compare / old_absolute_stderr ===
+seed: 11390073  valid: 489 / 500
+RMSE: 0.00560108  MAE: 0.00430233  rel_error: 0.0664171
+mean samples: 501.988  median/min/max: 512 / 64 / 512
+mean variance: 0.0174643  mean std_error: 0.00542739
+refinement ratio: 0.0916234  elapsed_seconds: 26.1874
+Wrote experiments/adaptive_relative_points.vtk
+
+=== adaptive_compare / relative_stderr ===
+seed: 11390073  valid: 489 / 500
+RMSE: 0.00881265  MAE: 0.00656646  rel_error: 0.0756132
+mean samples: 292.254  median/min/max: 256 / 64 / 512
+mean variance: 0.017345  mean std_error: 0.00805813
+refinement ratio: 0.0881124  elapsed_seconds: 16.7569
+
+=== adaptive_compare / fixed ===
+seed: 11391082  valid: 491 / 500
+RMSE: 0.00598994  MAE: 0.00429906  rel_error: 0.127214
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0175363  mean std_error: 0.00539642
+refinement ratio: 0.0931141  elapsed_seconds: 26.4241
+
+=== adaptive_compare / old_absolute_stderr ===
+seed: 11391082  valid: 491 / 500
+RMSE: 0.00599122  MAE: 0.00430273  rel_error: 0.12986
+mean samples: 501.051  median/min/max: 512 / 64 / 512
+mean variance: 0.0175285  mean std_error: 0.00539667
+refinement ratio: 0.0920383  elapsed_seconds: 26.6539
+
+=== adaptive_compare / relative_stderr ===
+seed: 11391082  valid: 491 / 500
+RMSE: 0.0091201  MAE: 0.00660158  rel_error: 0.136754
+mean samples: 288.978  median/min/max: 256 / 64 / 512
+mean variance: 0.017031  mean std_error: 0.00785282
+refinement ratio: 0.0880771  elapsed_seconds: 16.0077
+
+=== adaptive_compare / fixed ===
+seed: 11392091  valid: 491 / 500
+RMSE: 0.00616943  MAE: 0.00444633  rel_error: 0.104731
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0176941  mean std_error: 0.00539054
+refinement ratio: 0.093142  elapsed_seconds: 26.1582
+
+=== adaptive_compare / old_absolute_stderr ===
+seed: 11392091  valid: 491 / 500
+RMSE: 0.00617208  MAE: 0.00445866  rel_error: 0.1049
+mean samples: 500.269  median/min/max: 512 / 64 / 512
+mean variance: 0.0176888  mean std_error: 0.00539416
+refinement ratio: 0.0920504  elapsed_seconds: 26.2578
+
+=== adaptive_compare / relative_stderr ===
+seed: 11392091  valid: 491 / 500
+RMSE: 0.00884565  MAE: 0.00661858  rel_error: 0.113543
+mean samples: 304.554  median/min/max: 320 / 64 / 512
+mean variance: 0.0173694  mean std_error: 0.00754215
+refinement ratio: 0.0880311  elapsed_seconds: 17.6099
+
+=== antithetic_compare / normal ===
+seed: 95210  valid: 493 / 500
+RMSE: 0.00598272  MAE: 0.00444532  rel_error: 0.100486
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0177132  mean std_error: 0.00544546
+refinement ratio: 0.0928832  elapsed_seconds: 26.3256
+
+=== antithetic_compare / antithetic ===
+seed: 95210  valid: 493 / 500
+RMSE: 0.00450054  MAE: 0.00338156  rel_error: 0.0907894
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0049843  mean std_error: 0.0041944
+refinement ratio: 0.092849  elapsed_seconds: 26.0042
+
+=== antithetic_compare / normal ===
+seed: 96219  valid: 491 / 500
+RMSE: 0.00593898  MAE: 0.00436806  rel_error: 0.144854
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.017178  mean std_error: 0.00532886
+refinement ratio: 0.0933994  elapsed_seconds: 25.9343
+
+=== antithetic_compare / antithetic ===
+seed: 96219  valid: 491 / 500
+RMSE: 0.00429616  MAE: 0.0033768  rel_error: 0.130977
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.00485357  mean std_error: 0.00412537
+refinement ratio: 0.0936439  elapsed_seconds: 26.3706
+
+=== antithetic_compare / normal ===
+seed: 97228  valid: 489 / 500
+RMSE: 0.00588388  MAE: 0.00440478  rel_error: 0.234627
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0179539  mean std_error: 0.00545629
+refinement ratio: 0.0927562  elapsed_seconds: 25.2687
+
+=== antithetic_compare / antithetic ===
+seed: 97228  valid: 489 / 500
+RMSE: 0.00429321  MAE: 0.00328042  rel_error: 0.119494
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.00498643  mean std_error: 0.00417539
+refinement ratio: 0.09318  elapsed_seconds: 25.1593
+
+=== lazy_refinement / full_exact ===
+seed: 59044  valid: 493 / 500
+RMSE: 0.00655457  MAE: 0.00483555  rel_error: 0.172695
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0181067  mean std_error: 0.00546081
+refinement ratio: 1  elapsed_seconds: 238.255
+Wrote experiments/lazy_refinement_points.vtk
+
+=== lazy_refinement / lazy_threshold_x1 ===
+seed: 59044  valid: 493 / 500
+RMSE: 0.00655457  MAE: 0.00483555  rel_error: 0.172695
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0181067  mean std_error: 0.00546081
+refinement ratio: 0.0929298  elapsed_seconds: 27.0197
+
+=== lazy_refinement / lazy_threshold_x4 ===
+seed: 59044  valid: 493 / 500
+RMSE: 0.00655457  MAE: 0.00483555  rel_error: 0.172695
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0181067  mean std_error: 0.00546081
+refinement ratio: 0.258261  elapsed_seconds: 65.9141
+
+=== lazy_refinement / lazy_threshold_x16 ===
+seed: 59044  valid: 493 / 500
+RMSE: 0.00655457  MAE: 0.00483555  rel_error: 0.172695
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0181067  mean std_error: 0.00546081
+refinement ratio: 0.458173  elapsed_seconds: 114.338
+
+=== lazy_refinement / full_exact ===
+seed: 60053  valid: 484 / 500
+RMSE: 0.00550536  MAE: 0.00412584  rel_error: 0.0882308
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0168658  mean std_error: 0.00527197
+refinement ratio: 1  elapsed_seconds: 234.074
+
+=== lazy_refinement / lazy_threshold_x1 ===
+seed: 60053  valid: 484 / 500
+RMSE: 0.00550536  MAE: 0.00412584  rel_error: 0.0882308
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0168658  mean std_error: 0.00527197
+refinement ratio: 0.0938076  elapsed_seconds: 25.4553
+
+=== lazy_refinement / lazy_threshold_x4 ===
+seed: 60053  valid: 484 / 500
+RMSE: 0.00550536  MAE: 0.00412584  rel_error: 0.0882308
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0168658  mean std_error: 0.00527197
+refinement ratio: 0.260905  elapsed_seconds: 64.6421
+
+=== lazy_refinement / lazy_threshold_x16 ===
+seed: 60053  valid: 484 / 500
+RMSE: 0.00550536  MAE: 0.00412584  rel_error: 0.0882308
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0168658  mean std_error: 0.00527197
+refinement ratio: 0.462972  elapsed_seconds: 112.752
+
+=== lazy_refinement / full_exact ===
+seed: 61062  valid: 491 / 500
+RMSE: 0.00580604  MAE: 0.00423964  rel_error: 0.155234
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0175913  mean std_error: 0.00536394
+refinement ratio: 1  elapsed_seconds: 240.062
+
+=== lazy_refinement / lazy_threshold_x1 ===
+seed: 61062  valid: 491 / 500
+RMSE: 0.00580604  MAE: 0.00423964  rel_error: 0.155234
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0175913  mean std_error: 0.00536394
+refinement ratio: 0.0939779  elapsed_seconds: 25.7828
+
+=== lazy_refinement / lazy_threshold_x4 ===
+seed: 61062  valid: 491 / 500
+RMSE: 0.00580604  MAE: 0.00423964  rel_error: 0.155234
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0175913  mean std_error: 0.00536394
+refinement ratio: 0.261881  elapsed_seconds: 64.2678
+
+=== lazy_refinement / lazy_threshold_x16 ===
+seed: 61062  valid: 491 / 500
+RMSE: 0.00580604  MAE: 0.00423964  rel_error: 0.155234
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0175913  mean std_error: 0.00536394
+refinement ratio: 0.465208  elapsed_seconds: 111.855
+
+=== epsilon_extrapolation / epsilon ===
+seed: 15342985  valid: 491 / 500
+RMSE: 0.00656529  MAE: 0.00518249  rel_error: 0.0888731
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0143455  mean std_error: 0.00463533
+refinement ratio: 0.330929  elapsed_seconds: 24.1639
+
+=== epsilon_extrapolation / epsilon_half ===
+seed: 15342985  valid: 491 / 500
+RMSE: 0.00560454  MAE: 0.004288  rel_error: 0.0858833
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0153862  mean std_error: 0.00495183
+refinement ratio: 0.240278  elapsed_seconds: 24.1286
+
+=== epsilon_extrapolation / epsilon ===
+seed: 15343994  valid: 492 / 500
+RMSE: 0.0064664  MAE: 0.00517733  rel_error: 0.0974373
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0149021  mean std_error: 0.00473383
+refinement ratio: 0.330008  elapsed_seconds: 24.4758
+
+=== epsilon_extrapolation / epsilon_half ===
+seed: 15343994  valid: 492 / 500
+RMSE: 0.00594079  MAE: 0.00459168  rel_error: 0.0822221
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0157711  mean std_error: 0.0049823
+refinement ratio: 0.237982  elapsed_seconds: 25.9771
+
+=== epsilon_extrapolation / epsilon ===
+seed: 15345003  valid: 490 / 500
+RMSE: 0.0064203  MAE: 0.00526857  rel_error: 0.122782
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0143268  mean std_error: 0.00452821
+refinement ratio: 0.332833  elapsed_seconds: 24.3201
+
+=== epsilon_extrapolation / epsilon_half ===
+seed: 15345003  valid: 490 / 500
+RMSE: 0.00560235  MAE: 0.00445319  rel_error: 0.100975
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0153152  mean std_error: 0.004839
+refinement ratio: 0.244189  elapsed_seconds: 25.1135
+[WoSt] Loaded 960 triangles, 1472 silhouette edges.
+Neumann normal convention check: mean normal dot expected radial = 0.993292, min = 0.990437 PASS
+
+=== neumann_sanity / sphere_cube ===
+seed: 421264  valid: 0 / 500
+RMSE: 0  MAE: 0  rel_error: 0
+mean samples: 0  median/min/max: 0 / 0 / 0
+mean variance: 0  mean std_error: 0
+refinement ratio: 0  elapsed_seconds: 0.0001104
+
+=== neumann_sanity / sphere_cube ===
+seed: 422273  valid: 2 / 500
+RMSE: 0.0132331  MAE: 0.0112054  rel_error: 0.0251844
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.000140581  mean std_error: 0.000522351
+refinement ratio: 0.166888  elapsed_seconds: 0.0102181
+
+=== neumann_sanity / sphere_cube ===
+seed: 423282  valid: 1 / 500
+RMSE: 0.00965127  MAE: 0.00965127  rel_error: 0.0495763
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.000307968  mean std_error: 0.000775565
+refinement ratio: 0.13992  elapsed_seconds: 0.0157606
+
+Benchmark outputs written under results/. Optimization outputs written under experiments/.
+[exit=0, wall_seconds=1,838.961]
+
+## WoSt bunny boundary bias detector
+time: 2026-06-06 17:43:48
+cwd: C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode bias_detector --obj C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj --queries 500 --grid 16 --threads 8 --seed 12345 --cube 0.22 --boundary neumann --epsilon 0.001 --walks 128 --bias-threshold 2.0 --out C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\boundary_bias_detector.vtk --csv C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\boundary_bias_summary.csv
+WoSt linear Dirichlet benchmark
+mode: bias_detector
+obj: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+query points: 500
+grid: 16^3
+cube half extent: 0.22
+threads: 8
+seed: 12345
+adaptive min/max/batch: 64 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: neumann  walks: 128  epsilon: 0.001
+[WoSt] Loaded 70580 triangles, 105870 silhouette edges.
+
+=== bias_detector ===
+boundary: neumann  valid: 4018 / 4096
+mean_bias: 0.00942287  mean_normalized_bias: 0.314088  high_bias_ratio: 0.0049776
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\boundary_bias_detector.vtk
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\boundary_bias_summary.csv
+
+Boundary-bias outputs written under results/.
+[exit=0, wall_seconds=100.918]
+
+## WoSt bunny variance adaptive tau=0.003
+time: 2026-06-06 17:45:29
+cwd: C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode variance_adaptive --obj C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj --queries 500 --grid 16 --threads 8 --seed 12345 --cube 0.22 --boundary dirichlet --epsilon 0.0001 --pilot-samples 32 --min-samples 32 --max-samples 1024 --batch-size 32 --target-std-error 0.003 --out C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\variance_adaptive_points.csv --summary-out C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\variance_adaptive_summary.csv --csv C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\variance_adaptive_comparison.csv
+WoSt linear Dirichlet benchmark
+mode: variance_adaptive
+obj: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+query points: 500
+grid: 16^3
+cube half extent: 0.22
+threads: 8
+seed: 12345
+adaptive min/max/batch: 32 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: dirichlet  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 70580 triangles, 105870 silhouette edges.
+
+=== variance_adaptive / fixed_256 ===
+valid: 490 / 500  RMSE: 0.00860713  mean_samples: 256  runtime_seconds: 14.0474
+
+=== variance_adaptive / fixed_512 ===
+valid: 490 / 500  RMSE: 0.00548892  mean_samples: 512  runtime_seconds: 26.8125
+
+=== variance_adaptive / fixed_1024 ===
+valid: 490 / 500  RMSE: 0.00404028  mean_samples: 1024  runtime_seconds: 53.6671
+
+=== variance_adaptive / variance_adaptive_tau_0.003 ===
+valid: 490 / 500  RMSE: 0.00441877  mean_samples: 794.8  runtime_seconds: 46.1987
+
+=== variance_adaptive / variance_adaptive_tau_0.005 ===
+valid: 490 / 500  RMSE: 0.00542564  mean_samples: 562.484  runtime_seconds: 33.7794
+
+=== variance_adaptive / variance_adaptive_tau_0.008 ===
+valid: 490 / 500  RMSE: 0.00879791  mean_samples: 263.784  runtime_seconds: 17.4734
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\variance_adaptive_points.csv
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\variance_adaptive_summary.csv
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\variance_adaptive_comparison.csv
+
+Variance-adaptive outputs written under results/.
+[exit=0, wall_seconds=193.565]
+
+## WoSt bunny variance adaptive tau=0.005
+time: 2026-06-06 17:48:42
+cwd: C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode variance_adaptive --obj C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj --queries 500 --grid 16 --threads 8 --seed 12345 --cube 0.22 --boundary dirichlet --epsilon 0.0001 --pilot-samples 32 --min-samples 32 --max-samples 1024 --batch-size 32 --target-std-error 0.005 --out C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\variance_adaptive_points.csv --summary-out C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\variance_adaptive_summary.csv --csv C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\variance_adaptive_comparison.csv
+WoSt linear Dirichlet benchmark
+mode: variance_adaptive
+obj: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+query points: 500
+grid: 16^3
+cube half extent: 0.22
+threads: 8
+seed: 12345
+adaptive min/max/batch: 32 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: dirichlet  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 70580 triangles, 105870 silhouette edges.
+
+=== variance_adaptive / fixed_256 ===
+valid: 490 / 500  RMSE: 0.00860713  mean_samples: 256  runtime_seconds: 13.423
+
+=== variance_adaptive / fixed_512 ===
+valid: 490 / 500  RMSE: 0.00548892  mean_samples: 512  runtime_seconds: 27.0497
+
+=== variance_adaptive / fixed_1024 ===
+valid: 490 / 500  RMSE: 0.00404028  mean_samples: 1024  runtime_seconds: 52.9728
+
+=== variance_adaptive / variance_adaptive_tau_0.003 ===
+valid: 490 / 500  RMSE: 0.00441877  mean_samples: 794.8  runtime_seconds: 44.986
+
+=== variance_adaptive / variance_adaptive_tau_0.005 ===
+valid: 490 / 500  RMSE: 0.00542564  mean_samples: 562.484  runtime_seconds: 32.5733
+
+=== variance_adaptive / variance_adaptive_tau_0.008 ===
+valid: 490 / 500  RMSE: 0.00879791  mean_samples: 263.784  runtime_seconds: 16.078
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\variance_adaptive_points.csv
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\variance_adaptive_summary.csv
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\variance_adaptive_comparison.csv
+
+Variance-adaptive outputs written under results/.
+[exit=0, wall_seconds=188.503]
+
+## WoSt bunny variance adaptive tau=0.008
+time: 2026-06-06 17:51:51
+cwd: C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode variance_adaptive --obj C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj --queries 500 --grid 16 --threads 8 --seed 12345 --cube 0.22 --boundary dirichlet --epsilon 0.0001 --pilot-samples 32 --min-samples 32 --max-samples 1024 --batch-size 32 --target-std-error 0.008 --out C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\variance_adaptive_points.csv --summary-out C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\variance_adaptive_summary.csv --csv C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\variance_adaptive_comparison.csv
+WoSt linear Dirichlet benchmark
+mode: variance_adaptive
+obj: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+query points: 500
+grid: 16^3
+cube half extent: 0.22
+threads: 8
+seed: 12345
+adaptive min/max/batch: 32 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: dirichlet  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 70580 triangles, 105870 silhouette edges.
+
+=== variance_adaptive / fixed_256 ===
+valid: 490 / 500  RMSE: 0.00860713  mean_samples: 256  runtime_seconds: 13.3578
+
+=== variance_adaptive / fixed_512 ===
+valid: 490 / 500  RMSE: 0.00548892  mean_samples: 512  runtime_seconds: 27.0568
+
+=== variance_adaptive / fixed_1024 ===
+valid: 490 / 500  RMSE: 0.00404028  mean_samples: 1024  runtime_seconds: 53.3868
+
+=== variance_adaptive / variance_adaptive_tau_0.003 ===
+valid: 490 / 500  RMSE: 0.00441877  mean_samples: 794.8  runtime_seconds: 46.6108
+
+=== variance_adaptive / variance_adaptive_tau_0.005 ===
+valid: 490 / 500  RMSE: 0.00542564  mean_samples: 562.484  runtime_seconds: 33.6233
+
+=== variance_adaptive / variance_adaptive_tau_0.008 ===
+valid: 490 / 500  RMSE: 0.00879791  mean_samples: 263.784  runtime_seconds: 16.7758
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\variance_adaptive_points.csv
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\variance_adaptive_summary.csv
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\variance_adaptive_comparison.csv
+
+Variance-adaptive outputs written under results/.
+[exit=0, wall_seconds=191.679]
+
+## WoSt bunny live trace
+time: 2026-06-06 17:55:02
+cwd: C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode demo_point --obj C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj --queries 500 --grid 16 --threads 8 --seed 12345 --cube 0.22 --boundary neumann --walks 64 --epsilon 0.0001 --point 0.05 0.02 0.08 --trace-walks 8 --trace-out C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\live_trace.csv --summary-out C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\live_demo_summary.csv
+WoSt linear Dirichlet benchmark
+mode: demo_point
+obj: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+query points: 500
+grid: 16^3
+cube half extent: 0.22
+threads: 8
+seed: 12345
+adaptive min/max/batch: 64 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: neumann  walks: 64  epsilon: 0.0001
+[WoSt] Loaded 70580 triangles, 105870 silhouette edges.
+
+=== demo_point ===
+boundary: neumann
+point: (0.05, 0.02, 0.08)
+estimate: 0.214626  exact: 0.15  abs_error: 0.0646261
+std_error: 0.0289101  mean_steps: 75.9531  runtime_seconds: 0.143432
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\live_trace.csv
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\diagnostics\live_demo_summary.csv
+
+Demo outputs written under results/.
+[exit=0, wall_seconds=1.041]
+
+## WoSt spot dirichlet convergence
+time: 2026-06-06 17:55:04
+cwd: C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode convergence --obj C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj --queries 500 --threads 8 --seed 54321 --cube 1.1
+WoSt linear Dirichlet benchmark
+mode: convergence
+obj: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+query points: 500
+grid: 48^3
+cube half extent: 1.1
+threads: 8
+seed: 54321
+adaptive min/max/batch: 64 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: dirichlet  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 5856 triangles, 8784 silhouette edges.
+
+=== convergence ===
+mesh: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+valid points: 469 / 500
+walks_per_point: 16  epsilon: 0.0001  max_steps: 512
+elapsed_seconds: 0.114062
+points_per_second: 4383.59
+walks_per_second: 65788.9
+RMSE: 0.11582  MAE: 0.0851055  max_abs_error: 0.477902
+mean_std_error: 0.111355  mean_steps: 26.046  mean_samples_used: 16
+diverged_count: 0
+
+=== convergence ===
+mesh: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+valid points: 469 / 500
+walks_per_point: 64  epsilon: 0.0001  max_steps: 512
+elapsed_seconds: 0.417054
+points_per_second: 1198.89
+walks_per_second: 71971.5
+RMSE: 0.0597829  MAE: 0.0451335  max_abs_error: 0.209874
+mean_std_error: 0.0577212  mean_steps: 25.8849  mean_samples_used: 64
+diverged_count: 0
+
+=== convergence ===
+mesh: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+valid points: 469 / 500
+walks_per_point: 256  epsilon: 0.0001  max_steps: 512
+elapsed_seconds: 1.67876
+points_per_second: 297.839
+walks_per_second: 71519.5
+RMSE: 0.0307768  MAE: 0.0234114  max_abs_error: 0.113665
+mean_std_error: 0.0295914  mean_steps: 26.054  mean_samples_used: 256
+diverged_count: 0
+Wrote results/linear_dirichlet_pointcloud.vtk
+
+=== convergence ===
+mesh: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+valid points: 469 / 500
+walks_per_point: 1024  epsilon: 0.0001  max_steps: 512
+elapsed_seconds: 6.48898
+points_per_second: 77.0537
+walks_per_second: 74011
+RMSE: 0.0151741  MAE: 0.0113475  max_abs_error: 0.0575519
+mean_std_error: 0.0148563  mean_steps: 26.0583  mean_samples_used: 1024
+diverged_count: 0
+
+Benchmark outputs written under results/. Optimization outputs written under experiments/.
+[exit=0, wall_seconds=9.112]
+
+## WoSt spot dirichlet epsilon
+time: 2026-06-06 17:55:13
+cwd: C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode epsilon --obj C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj --queries 500 --threads 8 --seed 54321 --cube 1.1
+WoSt linear Dirichlet benchmark
+mode: epsilon
+obj: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+query points: 500
+grid: 48^3
+cube half extent: 1.1
+threads: 8
+seed: 54321
+adaptive min/max/batch: 64 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: dirichlet  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 5856 triangles, 8784 silhouette edges.
+
+=== epsilon ===
+mesh: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+valid points: 466 / 500
+walks_per_point: 256  epsilon: 0.01  max_steps: 512
+elapsed_seconds: 1.36586
+points_per_second: 366.069
+walks_per_second: 87341.2
+RMSE: 0.0332901  MAE: 0.0250607  max_abs_error: 0.121242
+mean_std_error: 0.0288382  mean_steps: 10.9191  mean_samples_used: 256
+diverged_count: 0
+
+=== epsilon ===
+mesh: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+valid points: 466 / 500
+walks_per_point: 256  epsilon: 0.001  max_steps: 512
+elapsed_seconds: 1.50234
+points_per_second: 332.814
+walks_per_second: 79406.9
+RMSE: 0.0317879  MAE: 0.0235948  max_abs_error: 0.117093
+mean_std_error: 0.0295799  mean_steps: 18.5054  mean_samples_used: 256
+diverged_count: 0
+
+=== epsilon ===
+mesh: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+valid points: 466 / 500
+walks_per_point: 256  epsilon: 0.0001  max_steps: 512
+elapsed_seconds: 1.8155
+points_per_second: 275.406
+walks_per_second: 65709.7
+RMSE: 0.0334423  MAE: 0.024685  max_abs_error: 0.121748
+mean_std_error: 0.0295687  mean_steps: 25.9943  mean_samples_used: 256
+diverged_count: 0
+
+=== epsilon ===
+mesh: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+valid points: 466 / 500
+walks_per_point: 256  epsilon: 1e-05  max_steps: 512
+elapsed_seconds: 1.89429
+points_per_second: 263.951
+walks_per_second: 62976.7
+RMSE: 0.0307531  MAE: 0.0231685  max_abs_error: 0.111712
+mean_std_error: 0.0296153  mean_steps: 33.514  mean_samples_used: 256
+diverged_count: 0
+
+Benchmark outputs written under results/. Optimization outputs written under experiments/.
+[exit=0, wall_seconds=7.051]
+
+## WoSt spot dirichlet grid
+time: 2026-06-06 17:55:20
+cwd: C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode grid --obj C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj --grid 16 --threads 8 --seed 54321 --cube 1.1
+WoSt linear Dirichlet benchmark
+mode: grid
+obj: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+query points: 20000
+grid: 16^3
+cube half extent: 1.1
+threads: 8
+seed: 54321
+adaptive min/max/batch: 64 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: dirichlet  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 5856 triangles, 8784 silhouette edges.
+
+=== linear_dirichlet_grid ===
+mesh: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+valid points: 3876 / 4096
+walks_per_point: 256  epsilon: 0.0001  max_steps: 512
+elapsed_seconds: 10.339
+points_per_second: 396.171
+walks_per_second: 95972.4
+RMSE: 0.027135  MAE: 0.0171191  max_abs_error: 0.137504
+mean_std_error: 0.02156  mean_steps: 17.9052  mean_samples_used: 256
+diverged_count: 0
+Wrote results/linear_dirichlet_grid.vtk
+
+Benchmark outputs written under results/. Optimization outputs written under experiments/.
+[exit=0, wall_seconds=11.153]
+
+## WoSt spot geometry benchmark
+time: 2026-06-06 17:55:31
+cwd: C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode geometry --obj C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj --queries 500 --threads 8 --seed 54321 --cube 1.1
+WoSt linear Dirichlet benchmark
+mode: geometry
+obj: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+query points: 500
+grid: 48^3
+cube half extent: 1.1
+threads: 8
+seed: 54321
+adaptive min/max/batch: 64 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: dirichlet  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 5856 triangles, 8784 silhouette edges.
+
+=== geometry_distance / tiny_bvh ===
+mesh: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+triangles: 5856
+queries: 500
+threads: 8
+elapsed_seconds: 0.0005363
+queries_per_second: 932314
+checksum: 230.565
+
+=== geometry_distance / brute_force ===
+mesh: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+triangles: 5856
+queries: 500
+threads: 8
+elapsed_seconds: 0.0065492
+queries_per_second: 76345.2
+checksum: 230.565
+
+Benchmark outputs written under results/. Optimization outputs written under experiments/.
+[exit=0, wall_seconds=1.033]
+
+## WoSt spot mixed Neumann
+time: 2026-06-06 17:55:32
+cwd: C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode neumann --obj C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj --queries 100 --grid 8 --threads 8 --seed 64321 --cube 1.1
+WoSt linear Dirichlet benchmark
+mode: neumann
+obj: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+query points: 100
+grid: 8^3
+cube half extent: 1.1
+threads: 8
+seed: 64321
+adaptive min/max/batch: 64 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: dirichlet  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 5856 triangles, 8784 silhouette edges.
+
+=== neumann_convergence ===
+mesh: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+valid points: 94 / 100
+walks_per_point: 16  epsilon: 0.0001  max_steps: 2048
+elapsed_seconds: 0.282103
+points_per_second: 354.48
+walks_per_second: 5331.38
+RMSE: 0.252166  MAE: 0.166991  max_abs_error: 0.974446
+mean_std_error: 0.15114  mean_steps: 107.887  mean_samples_used: 16
+diverged_count: 0
+
+=== neumann_convergence ===
+mesh: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+valid points: 94 / 100
+walks_per_point: 64  epsilon: 0.0001  max_steps: 2048
+elapsed_seconds: 1.14671
+points_per_second: 87.2056
+walks_per_second: 5246.29
+RMSE: 0.193347  MAE: 0.132174  max_abs_error: 0.905644
+mean_std_error: 0.0802726  mean_steps: 104.428  mean_samples_used: 64
+diverged_count: 3
+
+=== neumann_convergence ===
+mesh: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+valid points: 94 / 100
+walks_per_point: 256  epsilon: 0.0001  max_steps: 2048
+elapsed_seconds: 4.64277
+points_per_second: 21.5389
+walks_per_second: 5183.11
+RMSE: 0.174416  MAE: 0.109614  max_abs_error: 0.790732
+mean_std_error: 0.0407964  mean_steps: 107.588  mean_samples_used: 256
+diverged_count: 11
+Wrote results/neumann_mixed_pointcloud.vtk
+
+=== neumann_convergence ===
+mesh: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+valid points: 94 / 100
+walks_per_point: 1024  epsilon: 0.0001  max_steps: 2048
+elapsed_seconds: 18.0969
+points_per_second: 5.52581
+walks_per_second: 5318.92
+RMSE: 0.1671  MAE: 0.100406  max_abs_error: 0.846636
+mean_std_error: 0.020164  mean_steps: 106.164  mean_samples_used: 1024
+diverged_count: 32
+
+=== neumann_epsilon ===
+mesh: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+valid points: 97 / 100
+walks_per_point: 256  epsilon: 0.01  max_steps: 2048
+elapsed_seconds: 1.34065
+points_per_second: 74.5909
+walks_per_second: 18522.4
+RMSE: 0.626926  MAE: 0.349092  max_abs_error: 2.79172
+mean_std_error: 0.0447807  mean_steps: 11.7073  mean_samples_used: 256
+diverged_count: 0
+
+=== neumann_epsilon ===
+mesh: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+valid points: 97 / 100
+walks_per_point: 256  epsilon: 0.001  max_steps: 2048
+elapsed_seconds: 2.44139
+points_per_second: 40.9602
+walks_per_second: 10171.2
+RMSE: 0.234214  MAE: 0.123317  max_abs_error: 0.981327
+mean_std_error: 0.0402962  mean_steps: 38.616  mean_samples_used: 256
+diverged_count: 0
+
+=== neumann_epsilon ===
+mesh: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+valid points: 97 / 100
+walks_per_point: 256  epsilon: 0.0001  max_steps: 2048
+elapsed_seconds: 5.03783
+points_per_second: 19.8498
+walks_per_second: 4929.1
+RMSE: 0.186773  MAE: 0.106335  max_abs_error: 0.736502
+mean_std_error: 0.0403232  mean_steps: 102.307  mean_samples_used: 256
+diverged_count: 7
+
+=== neumann_epsilon ===
+mesh: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+valid points: 97 / 100
+walks_per_point: 256  epsilon: 1e-05  max_steps: 2048
+elapsed_seconds: 5.38137
+points_per_second: 18.5826
+walks_per_second: 4614.44
+RMSE: 0.187684  MAE: 0.111316  max_abs_error: 0.745036
+mean_std_error: 0.0405512  mean_steps: 134.841  mean_samples_used: 256
+diverged_count: 33
+
+=== neumann_mixed_grid ===
+mesh: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+valid points: 488 / 512
+walks_per_point: 256  epsilon: 0.0001  max_steps: 2048
+elapsed_seconds: 4.23427
+points_per_second: 120.918
+walks_per_second: 29504
+RMSE: 0.140543  MAE: 0.063701  max_abs_error: 0.929726
+mean_std_error: 0.0213831  mean_steps: 58.7314  mean_samples_used: 256
+diverged_count: 23
+Wrote results/neumann_mixed_grid.vtk
+
+Benchmark outputs written under results/. Optimization outputs written under experiments/.
+[exit=0, wall_seconds=43.418]
+
+## WoSt spot optimization diagnostics
+time: 2026-06-06 17:56:16
+cwd: C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode optimization --obj C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj --queries 500 --threads 8 --seed 74321 --cube 1.1 --max-samples 512 --min-samples 64 --batch-size 32 --target-rse 0.05 --rse-eps 0.001
+WoSt linear Dirichlet benchmark
+mode: optimization
+obj: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+query points: 500
+grid: 48^3
+cube half extent: 1.1
+threads: 8
+seed: 74321
+adaptive min/max/batch: 64 / 512 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: dirichlet  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 5856 triangles, 8784 silhouette edges.
+
+=== adaptive_compare / fixed ===
+seed: 11412049  valid: 473 / 500
+RMSE: 0.0226555  MAE: 0.0168081  rel_error: 0.0751364
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.248688  mean std_error: 0.0203572
+refinement ratio: 0.0776487  elapsed_seconds: 3.40363
+
+=== adaptive_compare / old_absolute_stderr ===
+seed: 11412049  valid: 473 / 500
+RMSE: 0.0226559  MAE: 0.0168134  rel_error: 0.075143
+mean samples: 510.106  median/min/max: 512 / 64 / 512
+mean variance: 0.248688  mean std_error: 0.0203587
+refinement ratio: 0.0774783  elapsed_seconds: 3.27069
+Wrote experiments/adaptive_relative_points.vtk
+
+=== adaptive_compare / relative_stderr ===
+seed: 11412049  valid: 473 / 500
+RMSE: 0.0409323  MAE: 0.0297702  rel_error: 0.085917
+mean samples: 246.867  median/min/max: 160 / 64 / 512
+mean variance: 0.244894  mean std_error: 0.0349034
+refinement ratio: 0.0754263  elapsed_seconds: 1.64214
+
+=== adaptive_compare / fixed ===
+seed: 11413058  valid: 467 / 500
+RMSE: 0.0217426  MAE: 0.0163369  rel_error: 0.0445368
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.247686  mean std_error: 0.0205115
+refinement ratio: 0.0773857  elapsed_seconds: 3.30089
+
+=== adaptive_compare / old_absolute_stderr ===
+seed: 11413058  valid: 467 / 500
+RMSE: 0.0217426  MAE: 0.0163382  rel_error: 0.044538
+mean samples: 510.355  median/min/max: 512 / 64 / 512
+mean variance: 0.247682  mean std_error: 0.0205094
+refinement ratio: 0.0772273  elapsed_seconds: 3.28718
+
+=== adaptive_compare / relative_stderr ===
+seed: 11413058  valid: 467 / 500
+RMSE: 0.037927  MAE: 0.0279989  rel_error: 0.053875
+mean samples: 237.293  median/min/max: 128 / 64 / 512
+mean variance: 0.241405  mean std_error: 0.0359705
+refinement ratio: 0.0749694  elapsed_seconds: 1.52921
+
+=== adaptive_compare / fixed ===
+seed: 11414067  valid: 469 / 500
+RMSE: 0.0217706  MAE: 0.0163435  rel_error: 0.0995777
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.248579  mean std_error: 0.0205866
+refinement ratio: 0.0773836  elapsed_seconds: 3.232
+
+=== adaptive_compare / old_absolute_stderr ===
+seed: 11414067  valid: 469 / 500
+RMSE: 0.0217706  MAE: 0.016345  rel_error: 0.0995788
+mean samples: 508.316  median/min/max: 512 / 64 / 512
+mean variance: 0.248577  mean std_error: 0.0205875
+refinement ratio: 0.0769198  elapsed_seconds: 3.2684
+
+=== adaptive_compare / relative_stderr ===
+seed: 11414067  valid: 469 / 500
+RMSE: 0.0410211  MAE: 0.0297248  rel_error: 0.111062
+mean samples: 231.642  median/min/max: 128 / 64 / 512
+mean variance: 0.242811  mean std_error: 0.0358862
+refinement ratio: 0.0751341  elapsed_seconds: 1.53046
+
+=== antithetic_compare / normal ===
+seed: 117186  valid: 462 / 500
+RMSE: 0.0224696  MAE: 0.0167286  rel_error: 0.135336
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.25253  mean std_error: 0.0208087
+refinement ratio: 0.0767967  elapsed_seconds: 3.34855
+
+=== antithetic_compare / antithetic ===
+seed: 117186  valid: 462 / 500
+RMSE: 0.0166937  MAE: 0.0129346  rel_error: 0.117019
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0696848  mean std_error: 0.0158116
+refinement ratio: 0.0769528  elapsed_seconds: 3.36015
+
+=== antithetic_compare / normal ===
+seed: 118195  valid: 471 / 500
+RMSE: 0.0221853  MAE: 0.0161099  rel_error: 0.0554257
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.25271  mean std_error: 0.0206969
+refinement ratio: 0.0771475  elapsed_seconds: 3.42988
+
+=== antithetic_compare / antithetic ===
+seed: 118195  valid: 471 / 500
+RMSE: 0.0161636  MAE: 0.0121483  rel_error: 0.0424345
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0687605  mean std_error: 0.0156354
+refinement ratio: 0.0771652  elapsed_seconds: 3.20762
+
+=== antithetic_compare / normal ===
+seed: 119204  valid: 461 / 500
+RMSE: 0.0224901  MAE: 0.0165274  rel_error: 0.0583815
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.236023  mean std_error: 0.019899
+refinement ratio: 0.078006  elapsed_seconds: 3.26817
+
+=== antithetic_compare / antithetic ===
+seed: 119204  valid: 461 / 500
+RMSE: 0.0157996  MAE: 0.0119143  rel_error: 0.0367866
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.0661425  mean std_error: 0.0153061
+refinement ratio: 0.0779912  elapsed_seconds: 3.32826
+
+=== lazy_refinement / full_exact ===
+seed: 81020  valid: 457 / 500
+RMSE: 0.0210905  MAE: 0.015866  rel_error: 0.13338
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.249452  mean std_error: 0.0205645
+refinement ratio: 1  elapsed_seconds: 25.214
+Wrote experiments/lazy_refinement_points.vtk
+
+=== lazy_refinement / lazy_threshold_x1 ===
+seed: 81020  valid: 457 / 500
+RMSE: 0.0210905  MAE: 0.015866  rel_error: 0.13338
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.249452  mean std_error: 0.0205645
+refinement ratio: 0.0769377  elapsed_seconds: 3.07438
+
+=== lazy_refinement / lazy_threshold_x4 ===
+seed: 81020  valid: 457 / 500
+RMSE: 0.0210905  MAE: 0.015866  rel_error: 0.13338
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.249452  mean std_error: 0.0205645
+refinement ratio: 0.213464  elapsed_seconds: 6.2891
+
+=== lazy_refinement / lazy_threshold_x16 ===
+seed: 81020  valid: 457 / 500
+RMSE: 0.0210905  MAE: 0.015866  rel_error: 0.13338
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.249452  mean std_error: 0.0205645
+refinement ratio: 0.379175  elapsed_seconds: 10.2106
+
+=== lazy_refinement / full_exact ===
+seed: 82029  valid: 460 / 500
+RMSE: 0.0226803  MAE: 0.0176406  rel_error: 0.0607489
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.250348  mean std_error: 0.0206831
+refinement ratio: 1  elapsed_seconds: 25.6522
+
+=== lazy_refinement / lazy_threshold_x1 ===
+seed: 82029  valid: 460 / 500
+RMSE: 0.0226803  MAE: 0.0176406  rel_error: 0.0607489
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.250348  mean std_error: 0.0206831
+refinement ratio: 0.0770569  elapsed_seconds: 3.11199
+
+=== lazy_refinement / lazy_threshold_x4 ===
+seed: 82029  valid: 460 / 500
+RMSE: 0.0226803  MAE: 0.0176406  rel_error: 0.0607489
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.250348  mean std_error: 0.0206831
+refinement ratio: 0.213983  elapsed_seconds: 6.45677
+
+=== lazy_refinement / lazy_threshold_x16 ===
+seed: 82029  valid: 460 / 500
+RMSE: 0.0226803  MAE: 0.0176406  rel_error: 0.0607489
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.250348  mean std_error: 0.0206831
+refinement ratio: 0.379036  elapsed_seconds: 10.4974
+
+=== lazy_refinement / full_exact ===
+seed: 83038  valid: 460 / 500
+RMSE: 0.0220526  MAE: 0.0168532  rel_error: 0.182363
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.23872  mean std_error: 0.0201381
+refinement ratio: 1  elapsed_seconds: 25.9814
+
+=== lazy_refinement / lazy_threshold_x1 ===
+seed: 83038  valid: 460 / 500
+RMSE: 0.0220526  MAE: 0.0168532  rel_error: 0.182363
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.23872  mean std_error: 0.0201381
+refinement ratio: 0.0772865  elapsed_seconds: 3.17281
+
+=== lazy_refinement / lazy_threshold_x4 ===
+seed: 83038  valid: 460 / 500
+RMSE: 0.0220526  MAE: 0.0168532  rel_error: 0.182363
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.23872  mean std_error: 0.0201381
+refinement ratio: 0.214488  elapsed_seconds: 6.42537
+
+=== lazy_refinement / lazy_threshold_x16 ===
+seed: 83038  valid: 460 / 500
+RMSE: 0.0220526  MAE: 0.0168532  rel_error: 0.182363
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.23872  mean std_error: 0.0201381
+refinement ratio: 0.380316  elapsed_seconds: 10.0918
+
+=== epsilon_extrapolation / epsilon ===
+seed: 15364961  valid: 463 / 500
+RMSE: 0.0218537  MAE: 0.0164379  rel_error: 0.328808
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.23333  mean std_error: 0.019468
+refinement ratio: 0.189202  elapsed_seconds: 2.5347
+
+=== epsilon_extrapolation / epsilon_half ===
+seed: 15364961  valid: 463 / 500
+RMSE: 0.0210443  MAE: 0.0157388  rel_error: 0.216284
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.238002  mean std_error: 0.019841
+refinement ratio: 0.156976  elapsed_seconds: 2.66472
+
+=== epsilon_extrapolation / epsilon ===
+seed: 15365970  valid: 468 / 500
+RMSE: 0.0209635  MAE: 0.0155721  rel_error: 0.0449639
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.241703  mean std_error: 0.0199544
+refinement ratio: 0.187422  elapsed_seconds: 2.62039
+
+=== epsilon_extrapolation / epsilon_half ===
+seed: 15365970  valid: 468 / 500
+RMSE: 0.0226  MAE: 0.0162877  rel_error: 0.053915
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.245648  mean std_error: 0.0202481
+refinement ratio: 0.153796  elapsed_seconds: 2.71533
+
+=== epsilon_extrapolation / epsilon ===
+seed: 15366979  valid: 478 / 500
+RMSE: 0.0221268  MAE: 0.0165  rel_error: 0.119868
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.234038  mean std_error: 0.0197948
+refinement ratio: 0.185567  elapsed_seconds: 2.67435
+
+=== epsilon_extrapolation / epsilon_half ===
+seed: 15366979  valid: 478 / 500
+RMSE: 0.0213643  MAE: 0.0161313  rel_error: 0.0908055
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.239359  mean std_error: 0.0201533
+refinement ratio: 0.153684  elapsed_seconds: 2.74052
+[WoSt] Loaded 960 triangles, 1472 silhouette edges.
+Neumann normal convention check: mean normal dot expected radial = 0.993292, min = 0.990437 PASS
+
+=== neumann_sanity / sphere_cube ===
+seed: 443240  valid: 495 / 500
+RMSE: 0.0710555  MAE: 0.042572  rel_error: 0.153696
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.582097  mean std_error: 0.0308191
+refinement ratio: 0.0769887  elapsed_seconds: 2.65414
+
+=== neumann_sanity / sphere_cube ===
+seed: 444249  valid: 489 / 500
+RMSE: 0.0812892  MAE: 0.0448236  rel_error: 0.161079
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.57128  mean std_error: 0.0304464
+refinement ratio: 0.0772851  elapsed_seconds: 2.76624
+
+=== neumann_sanity / sphere_cube ===
+seed: 445258  valid: 492 / 500
+RMSE: 0.0791297  MAE: 0.0438188  rel_error: 0.132287
+mean samples: 512  median/min/max: 512 / 512 / 512
+mean variance: 0.574975  mean std_error: 0.0307165
+refinement ratio: 0.0768798  elapsed_seconds: 2.79271
+
+Benchmark outputs written under results/. Optimization outputs written under experiments/.
+[exit=0, wall_seconds=205.634]
+
+## WoSt spot boundary bias detector
+time: 2026-06-06 17:59:41
+cwd: C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode bias_detector --obj C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj --queries 500 --grid 16 --threads 8 --seed 54321 --cube 1.1 --boundary neumann --epsilon 0.001 --walks 128 --bias-threshold 2.0 --out C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\boundary_bias_detector.vtk --csv C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\boundary_bias_summary.csv
+WoSt linear Dirichlet benchmark
+mode: bias_detector
+obj: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+query points: 500
+grid: 16^3
+cube half extent: 1.1
+threads: 8
+seed: 54321
+adaptive min/max/batch: 64 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: neumann  walks: 128  epsilon: 0.001
+[WoSt] Loaded 5856 triangles, 8784 silhouette edges.
+
+=== bias_detector ===
+boundary: neumann  valid: 3876 / 4096
+mean_bias: 0.0433745  mean_normalized_bias: 0.320499  high_bias_ratio: 0.00257998
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\boundary_bias_detector.vtk
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\boundary_bias_summary.csv
+
+Boundary-bias outputs written under results/.
+[exit=0, wall_seconds=22.212]
+
+## WoSt spot variance adaptive tau=0.003
+time: 2026-06-06 18:00:04
+cwd: C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode variance_adaptive --obj C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj --queries 500 --grid 16 --threads 8 --seed 54321 --cube 1.1 --boundary dirichlet --epsilon 0.0001 --pilot-samples 32 --min-samples 32 --max-samples 1024 --batch-size 32 --target-std-error 0.003 --out C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\variance_adaptive_points.csv --summary-out C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\variance_adaptive_summary.csv --csv C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\variance_adaptive_comparison.csv
+WoSt linear Dirichlet benchmark
+mode: variance_adaptive
+obj: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+query points: 500
+grid: 16^3
+cube half extent: 1.1
+threads: 8
+seed: 54321
+adaptive min/max/batch: 32 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: dirichlet  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 5856 triangles, 8784 silhouette edges.
+
+=== variance_adaptive / fixed_256 ===
+valid: 459 / 500  RMSE: 0.0307619  mean_samples: 256  runtime_seconds: 1.65845
+
+=== variance_adaptive / fixed_512 ===
+valid: 459 / 500  RMSE: 0.022266  mean_samples: 512  runtime_seconds: 3.26755
+
+=== variance_adaptive / fixed_1024 ===
+valid: 459 / 500  RMSE: 0.0147314  mean_samples: 1024  runtime_seconds: 6.29313
+
+=== variance_adaptive / variance_adaptive_tau_0.003 ===
+valid: 459 / 500  RMSE: 0.0147991  mean_samples: 985.795  runtime_seconds: 6.3131
+
+=== variance_adaptive / variance_adaptive_tau_0.005 ===
+valid: 459 / 500  RMSE: 0.0149495  mean_samples: 949.71  runtime_seconds: 6.09926
+
+=== variance_adaptive / variance_adaptive_tau_0.008 ===
+valid: 459 / 500  RMSE: 0.0152942  mean_samples: 899.922  runtime_seconds: 5.84494
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\variance_adaptive_points.csv
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\variance_adaptive_summary.csv
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\variance_adaptive_comparison.csv
+
+Variance-adaptive outputs written under results/.
+[exit=0, wall_seconds=30.277]
+
+## WoSt spot variance adaptive tau=0.005
+time: 2026-06-06 18:00:34
+cwd: C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode variance_adaptive --obj C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj --queries 500 --grid 16 --threads 8 --seed 54321 --cube 1.1 --boundary dirichlet --epsilon 0.0001 --pilot-samples 32 --min-samples 32 --max-samples 1024 --batch-size 32 --target-std-error 0.005 --out C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\variance_adaptive_points.csv --summary-out C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\variance_adaptive_summary.csv --csv C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\variance_adaptive_comparison.csv
+WoSt linear Dirichlet benchmark
+mode: variance_adaptive
+obj: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+query points: 500
+grid: 16^3
+cube half extent: 1.1
+threads: 8
+seed: 54321
+adaptive min/max/batch: 32 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: dirichlet  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 5856 triangles, 8784 silhouette edges.
+
+=== variance_adaptive / fixed_256 ===
+valid: 459 / 500  RMSE: 0.0307619  mean_samples: 256  runtime_seconds: 1.6516
+
+=== variance_adaptive / fixed_512 ===
+valid: 459 / 500  RMSE: 0.022266  mean_samples: 512  runtime_seconds: 3.2998
+
+=== variance_adaptive / fixed_1024 ===
+valid: 459 / 500  RMSE: 0.0147314  mean_samples: 1024  runtime_seconds: 6.28801
+
+=== variance_adaptive / variance_adaptive_tau_0.003 ===
+valid: 459 / 500  RMSE: 0.0147991  mean_samples: 985.795  runtime_seconds: 6.30137
+
+=== variance_adaptive / variance_adaptive_tau_0.005 ===
+valid: 459 / 500  RMSE: 0.0149495  mean_samples: 949.71  runtime_seconds: 6.06823
+
+=== variance_adaptive / variance_adaptive_tau_0.008 ===
+valid: 459 / 500  RMSE: 0.0152942  mean_samples: 899.922  runtime_seconds: 5.79761
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\variance_adaptive_points.csv
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\variance_adaptive_summary.csv
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\variance_adaptive_comparison.csv
+
+Variance-adaptive outputs written under results/.
+[exit=0, wall_seconds=30.248]
+
+## WoSt spot variance adaptive tau=0.008
+time: 2026-06-06 18:01:04
+cwd: C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode variance_adaptive --obj C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj --queries 500 --grid 16 --threads 8 --seed 54321 --cube 1.1 --boundary dirichlet --epsilon 0.0001 --pilot-samples 32 --min-samples 32 --max-samples 1024 --batch-size 32 --target-std-error 0.008 --out C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\variance_adaptive_points.csv --summary-out C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\variance_adaptive_summary.csv --csv C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\variance_adaptive_comparison.csv
+WoSt linear Dirichlet benchmark
+mode: variance_adaptive
+obj: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+query points: 500
+grid: 16^3
+cube half extent: 1.1
+threads: 8
+seed: 54321
+adaptive min/max/batch: 32 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: dirichlet  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 5856 triangles, 8784 silhouette edges.
+
+=== variance_adaptive / fixed_256 ===
+valid: 459 / 500  RMSE: 0.0307619  mean_samples: 256  runtime_seconds: 1.65291
+
+=== variance_adaptive / fixed_512 ===
+valid: 459 / 500  RMSE: 0.022266  mean_samples: 512  runtime_seconds: 3.21457
+
+=== variance_adaptive / fixed_1024 ===
+valid: 459 / 500  RMSE: 0.0147314  mean_samples: 1024  runtime_seconds: 6.45607
+
+=== variance_adaptive / variance_adaptive_tau_0.003 ===
+valid: 459 / 500  RMSE: 0.0147991  mean_samples: 985.795  runtime_seconds: 6.25353
+
+=== variance_adaptive / variance_adaptive_tau_0.005 ===
+valid: 459 / 500  RMSE: 0.0149495  mean_samples: 949.71  runtime_seconds: 6.04525
+
+=== variance_adaptive / variance_adaptive_tau_0.008 ===
+valid: 459 / 500  RMSE: 0.0152942  mean_samples: 899.922  runtime_seconds: 5.89748
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\variance_adaptive_points.csv
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\variance_adaptive_summary.csv
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\variance_adaptive_comparison.csv
+
+Variance-adaptive outputs written under results/.
+[exit=0, wall_seconds=30.271]
+
+## WoSt spot live trace
+time: 2026-06-06 18:01:35
+cwd: C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode demo_point --obj C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj --queries 500 --grid 16 --threads 8 --seed 54321 --cube 1.1 --boundary neumann --walks 64 --epsilon 0.0001 --point 0.8 0 0.2 --trace-walks 8 --trace-out C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\live_trace.csv --summary-out C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\live_demo_summary.csv
+WoSt linear Dirichlet benchmark
+mode: demo_point
+obj: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+query points: 500
+grid: 16^3
+cube half extent: 1.1
+threads: 8
+seed: 54321
+adaptive min/max/batch: 64 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: neumann  walks: 64  epsilon: 0.0001
+[WoSt] Loaded 5856 triangles, 8784 silhouette edges.
+
+=== demo_point ===
+boundary: neumann
+point: (0.8, 0, 0.2)
+estimate: 1.22723  exact: 1  abs_error: 0.22723
+std_error: 0.116738  mean_steps: 144.328  runtime_seconds: 0.0294402
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\live_trace.csv
+wrote C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\diagnostics\live_demo_summary.csv
+
+Demo outputs written under results/.
+[exit=0, wall_seconds=1.048]
+
+## Zombie bunny dirichlet baseline
+time: 2026-06-06 18:01:36
+cwd: C:\THU\homework\zombie
+$ C:\THU\homework\zombie\.venv\Scripts\python.exe C:\THU\homework\zombie\scripts\zombie_bunny_baseline.py --mode all --obj C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj --out C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\zombie_bunny_dirichlet --reference-results C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\results --queries 500 --geometry-queries 500 --grid 16 --seed 12345 --cube 0.22 --max-steps 512
+BVH construction time: 0.0680954 seconds
+BVH stats: 45065 nodes, 22533 leaves, 18 max depth, 70580 primitives, 0 silhouettes and 0 silhouetteRefs
+BVH construction time: 0.072694 seconds
+BVH stats: 45149 nodes, 22575 leaves, 21 max depth, 70592 primitives, 0 silhouettes and 0 silhouetteRefs
+Wrote Zombie baseline results to C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\zombie_bunny_dirichlet
+[exit=0, wall_seconds=69.666]
+
+## Zombie bunny mixed Neumann baseline
+time: 2026-06-06 18:02:46
+cwd: C:\THU\homework\zombie
+$ C:\THU\homework\zombie\.venv\Scripts\python.exe C:\THU\homework\zombie\scripts\zombie_neumann_bunny_baseline.py --mode all --obj C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj --out C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\zombie_bunny_neumann --reference-results C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_bunny\results --queries 100 --grid 8 --seed 32345 --cube 0.22 --max-steps 2048
+BVH construction time: 0.0658686 seconds
+BVH stats: 45065 nodes, 22533 leaves, 18 max depth, 70580 primitives, 0 silhouettes and 0 silhouetteRefs
+BVH construction time: 2.85e-05 seconds
+BVH stats: 9 nodes, 5 leaves, 4 max depth, 12 primitives, 0 silhouettes and 0 silhouetteRefs
+BVH construction time: 0.145038 seconds
+BVH stats: 45065 nodes, 22533 leaves, 18 max depth, 70580 primitives, 105870 silhouettes and 63193 silhouetteRefs
+Wrote Zombie Neumann baseline results to C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\zombie_bunny_neumann
+[exit=0, wall_seconds=429.983]
+
+## Zombie spot dirichlet baseline
+time: 2026-06-06 18:09:56
+cwd: C:\THU\homework\zombie
+$ C:\THU\homework\zombie\.venv\Scripts\python.exe C:\THU\homework\zombie\scripts\zombie_bunny_baseline.py --mode all --obj C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj --out C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\zombie_spot_dirichlet --reference-results C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\results --queries 500 --geometry-queries 500 --grid 16 --seed 54321 --cube 1.1 --max-steps 512
+BVH construction time: 0.0045301 seconds
+BVH stats: 3687 nodes, 1844 leaves, 13 max depth, 5856 primitives, 0 silhouettes and 0 silhouetteRefs
+BVH construction time: 0.0050602 seconds
+BVH stats: 3781 nodes, 1891 leaves, 17 max depth, 5868 primitives, 0 silhouettes and 0 silhouetteRefs
+Wrote Zombie baseline results to C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\zombie_spot_dirichlet
+[exit=0, wall_seconds=31.314]
+
+## Zombie spot mixed Neumann baseline
+time: 2026-06-06 18:10:27
+cwd: C:\THU\homework\zombie
+$ C:\THU\homework\zombie\.venv\Scripts\python.exe C:\THU\homework\zombie\scripts\zombie_neumann_bunny_baseline.py --mode all --obj C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj --out C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\zombie_spot_neumann --reference-results C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\wost_spot\results --queries 100 --grid 8 --seed 64321 --cube 1.1 --max-steps 2048
+BVH construction time: 0.0045567 seconds
+BVH stats: 3687 nodes, 1844 leaves, 13 max depth, 5856 primitives, 0 silhouettes and 0 silhouetteRefs
+BVH construction time: 1.12e-05 seconds
+BVH stats: 9 nodes, 5 leaves, 4 max depth, 12 primitives, 0 silhouettes and 0 silhouetteRefs
+BVH construction time: 0.0093403 seconds
+BVH stats: 3687 nodes, 1844 leaves, 13 max depth, 5856 primitives, 8784 silhouettes and 3693 silhouetteRefs
+Wrote Zombie Neumann baseline results to C:\THU\projects\WoSt_Final_project-1\experiments\rerun_cross_mesh_20260606\zombie_spot_neumann
+[exit=0, wall_seconds=848.496]
+finished: 2026-06-06 18:24:36

@@ -1,4 +1,24 @@
-/build
+# Local build and environment state
+/build/
 /build-*/
-/.venv
+/.venv/
+
+# Python caches
+__pycache__/
+*.py[cod]
+
+# OS/editor metadata
+.DS_Store
+Thumbs.db
+
+# Local C/C++ binaries and build byproducts
+*.exe
+*.pdb
+*.ilk
+*.lib
+*.exp
+
+# Transient benchmark archives generated while iterating locally.
+# Durable report inputs should live under experiments/<run-name>/.
 /results_archive_*/
+/local_archive/
