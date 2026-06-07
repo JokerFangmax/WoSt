@@ -1,5 +1,5 @@
 reports/FINAL_COURSE_REPORT.md sensitive-word hits: {}
-reports/FINAL_COURSE_REPORT.md figure refs: 16, missing: 0
+reports/FINAL_COURSE_REPORT.md figure refs: 18, missing: 0
 reports/POSTER_RESULTS_SECTION.md sensitive-word hits: {}
 reports/POSTER_RESULTS_SECTION.md figure refs: 0, missing: 0
 reports/final_report_provenance.md sensitive-word hits: {}

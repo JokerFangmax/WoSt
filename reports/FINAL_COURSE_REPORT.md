@@ -165,7 +165,24 @@ The 95% confidence intervals shown here are computed across valid query points w
 
 **Figure 12.** Spot live path trace. The trace is qualitative evidence only: it illustrates reflection-heavy behavior near difficult Neumann regions but does not by itself establish a mechanism.
 
+![Antithetic sampling variance diagnostic](final_assets/fig13_antithetic_variance_diagnostic.png)
+
+**Figure 13.** Antithetic sampling variance diagnostic. Paired directions reduce the measured sample variance in these diagnostic runs on both Bunny and Spot; this addresses estimator variance, not epsilon or geometry-related systematic error.
+
+![Lazy star-radius refinement runtime diagnostic](final_assets/fig14_lazy_refinement_runtime.png)
+
+**Figure 14.** Lazy star-radius refinement runtime diagnostic. The lazy x1 setting substantially reduces runtime compared with full exact star-radius refinement while preserving the tested mean RMSE in these runs.
+
 These tools are tied to the research question as diagnostics rather than accuracy guarantees. **Adaptive sampling** asks where variance concentrates. The fact that Spot remains close to the maximum sample count suggests that high variance is widespread in the sampled region, so adaptive sampling is less useful as a speedup but still useful as a variance diagnostic. **Antithetic sampling** asks whether paired samples can reduce estimator variance in diagnostic runs. **Lazy refinement** asks how much runtime can be saved without changing the tested mean RMSE in the diagnostic setting. **BVH acceleration** asks whether geometry querying is efficient enough for repeated WoSt experiments. **Live trace** asks what difficult reflection-heavy paths look like. The trace is qualitative evidence only. It illustrates reflection-heavy behavior near difficult Neumann regions but does not by itself establish a mechanism.
+
+### Antithetic and lazy-refinement summary
+
+The table below summarizes repeated diagnostic rows from the existing optimization summaries. Antithetic sampling lowers mean sample variance in both meshes. Lazy x1 refinement reduces exact star-radius work and runtime while keeping the same reported mean RMSE as full exact refinement in this diagnostic setting. These rows should be read as paired engineering diagnostics, not as a guarantee for every geometry or boundary condition.
+
+| mesh | normal variance | antithetic variance | variance ratio | normal RMSE | antithetic RMSE | full exact sec | lazy x1 sec | speedup | lazy x1 RMSE | exact refinement ratio |
+|---|---|---|---|---|---|---|---|---|---|---|
+| bunny | 0.0176 | 0.0049 | 0.2805 | 0.0059 | 0.0044 | 237.46 | 26.086 | 9.103 | 0.0060 | 0.0936 |
+| spot | 0.2471 | 0.0682 | 0.2760 | 0.0224 | 0.0162 | 25.616 | 3.120 | 8.211 | 0.0219 | 0.0771 |
 
 ## 11. Discussion
 
@@ -205,7 +222,7 @@ The strongest available pointwise signal is the normalized nearest-distance prox
 | Boundary proximity is the strongest observed predictor | Geometry correlations and pointwise scatter plots identify normalized nearest-distance proxy as the strongest stable predictor. | The variable is a nearest-distance proxy, not exact signed distance. |
 | Spot remains harder after distance matching | Controlled bins 1-3 show Spot/Bunny error ratios of about 3.38x, 3.68x, and 1.37x. | Ratios are descriptive; Spot bin 4 is missing and repeated-seed confidence intervals are not available. |
 | Coarse epsilon induces boundary-sensitive error | Epsilon sweep and boundary-bias indicator figures show much larger error/indicator values at coarse epsilon. | The epsilon-vs-half-epsilon value is an indicator, not an exact bias decomposition. |
-| Optimization tools are diagnostic, not general fixes | Adaptive, antithetic, lazy refinement, BVH, and live-trace outputs expose variance/runtime/path behavior. | They should not be presented as guaranteed accuracy improvements. |
+| Optimization tools are diagnostic, not general fixes | Adaptive, antithetic, lazy refinement, BVH, and live-trace outputs expose variance/runtime/path behavior; Figures 10-14 summarize the main diagnostics. | They should not be presented as guaranteed accuracy improvements. |
 
 ## 15. Conclusion
 
@@ -217,6 +234,7 @@ The reproduced WoSt pipeline passes the basic Dirichlet sanity check, but mixed 
 
 - `reports/final_assets/controlled_matched_bin_statistics.csv`
 - `reports/final_assets/controlled_matched_bin_ratios.csv`
+- `reports/final_assets/optimization_diagnostic_summary.csv`
 - `reports/final_report_provenance.md`
 - Source reports: `experiments/rerun_cross_mesh_20260606/RERUN_SUMMARY.md`, `experiments/geometry_sensitive_analysis_20260606/GEOMETRY_SENSITIVE_REPORT.md`, `experiments/controlled_geometry_experiments_20260606/CONTROLLED_GEOMETRY_REPORT.md`
 

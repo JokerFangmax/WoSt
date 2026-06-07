@@ -20,6 +20,8 @@
 | experiments/controlled_geometry_experiments_20260606/distance_controlled_query_counts.csv | Feasible query counts by mesh and distance bin. | Experiment 5 limitations and missing Spot bin 4. |
 | experiments/rerun_cross_mesh_20260606/wost_bunny/diagnostics/variance_adaptive_comparison.csv | Bunny variance-adaptive sampling comparison. | Diagnostic/optimization tools section. |
 | experiments/rerun_cross_mesh_20260606/wost_spot/diagnostics/variance_adaptive_comparison.csv | Spot variance-adaptive sampling comparison. | Diagnostic/optimization tools section. |
+| experiments/rerun_cross_mesh_20260606/wost_bunny/experiments/optimization_summary.csv | Bunny antithetic, lazy refinement, and other optimization diagnostics. | Diagnostic/optimization tools section and Figures 13-14. |
+| experiments/rerun_cross_mesh_20260606/wost_spot/experiments/optimization_summary.csv | Spot antithetic, lazy refinement, and other optimization diagnostics. | Diagnostic/optimization tools section and Figures 13-14. |
 | experiments/rerun_cross_mesh_20260606/wost_bunny/diagnostics/live_trace.csv | Bunny live random-walk trace data. | Live tracing diagnostic discussion. |
 | experiments/rerun_cross_mesh_20260606/wost_spot/diagnostics/live_trace.csv | Spot live random-walk trace data. | Live tracing diagnostic discussion. |
 | experiments/rerun_cross_mesh_20260606/command_log.txt | Exact commands used for the cross-mesh rerun. | Methods and provenance. |
@@ -30,6 +32,8 @@
 | reports/final_assets/fig10b_spot_adaptive_tradeoff.png | Generated final-report figure/table asset. | Main report or poster section. |
 | reports/final_assets/fig11_spot_live_trace.png | Generated final-report figure/table asset. | Main report or poster section. |
 | reports/final_assets/fig12_bvh_vs_bruteforce_supporting.png | Generated final-report figure/table asset. | Main report or poster section. |
+| reports/final_assets/fig13_antithetic_variance_diagnostic.png | Generated final-report figure/table asset. | Main report or poster section. |
+| reports/final_assets/fig14_lazy_refinement_runtime.png | Generated final-report figure/table asset. | Main report or poster section. |
 | reports/final_assets/fig1_dirichlet_rmse_vs_walks.png | Generated final-report figure/table asset. | Main report or poster section. |
 | reports/final_assets/fig2_mixed_neumann_rmse_vs_walks.png | Generated final-report figure/table asset. | Main report or poster section. |
 | reports/final_assets/fig3_neumann_epsilon_sweep.png | Generated final-report figure/table asset. | Main report or poster section. |
@@ -42,3 +46,4 @@
 | reports/final_assets/fig8_matched_bin_mean_steps.png | Generated final-report figure/table asset. | Main report or poster section. |
 | reports/final_assets/fig9a_bunny_epsilon_distance_rmse.png | Generated final-report figure/table asset. | Main report or poster section. |
 | reports/final_assets/fig9b_spot_epsilon_distance_rmse.png | Generated final-report figure/table asset. | Main report or poster section. |
+| reports/final_assets/optimization_diagnostic_summary.csv | Generated final-report figure/table asset. | Main report or poster section. |

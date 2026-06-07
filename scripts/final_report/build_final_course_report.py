@@ -342,6 +342,95 @@ def plot_top_correlations(out_name: str) -> Path:
     return path
 
 
+def optimization_rows(mesh: str) -> list[dict[str, str]]:
+    return read_csv(RERUN / f"wost_{mesh}" / "experiments" / "optimization_summary.csv")
+
+
+def metric_values(mesh: str, experiment: str, method: str, field: str) -> list[float]:
+    return [
+        f(row.get(field))
+        for row in optimization_rows(mesh)
+        if row.get("experiment") == experiment and row.get("method") == method
+    ]
+
+
+def optimization_diagnostic_summary() -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for mesh in ["bunny", "spot"]:
+        normal_var = metric_values(mesh, "antithetic_compare", "normal", "mean_sample_variance")
+        antithetic_var = metric_values(mesh, "antithetic_compare", "antithetic", "mean_sample_variance")
+        normal_rmse = metric_values(mesh, "antithetic_compare", "normal", "rmse")
+        antithetic_rmse = metric_values(mesh, "antithetic_compare", "antithetic", "rmse")
+        full_time = metric_values(mesh, "lazy_refinement", "full_exact", "elapsed_seconds")
+        lazy_time = metric_values(mesh, "lazy_refinement", "lazy_threshold_x1", "elapsed_seconds")
+        full_rmse = metric_values(mesh, "lazy_refinement", "full_exact", "rmse")
+        lazy_rmse = metric_values(mesh, "lazy_refinement", "lazy_threshold_x1", "rmse")
+        lazy_refine = metric_values(mesh, "lazy_refinement", "lazy_threshold_x1", "refinement_ratio")
+        rows.append({
+            "mesh": mesh,
+            "antithetic_normal_mean_variance": mean(normal_var),
+            "antithetic_mean_variance": mean(antithetic_var),
+            "antithetic_variance_ratio": mean(antithetic_var) / mean(normal_var),
+            "normal_rmse": mean(normal_rmse),
+            "antithetic_rmse": mean(antithetic_rmse),
+            "lazy_full_exact_seconds": mean(full_time),
+            "lazy_x1_seconds": mean(lazy_time),
+            "lazy_x1_speedup": mean(full_time) / mean(lazy_time),
+            "lazy_full_exact_rmse": mean(full_rmse),
+            "lazy_x1_rmse": mean(lazy_rmse),
+            "lazy_x1_exact_refinement_ratio": mean(lazy_refine),
+        })
+    return rows
+
+
+def plot_antithetic_variance(out_name: str) -> Path:
+    plt = plot_setup()
+    fig, ax = plt.subplots(figsize=(6.4, 4.0), constrained_layout=True)
+    meshes = ["bunny", "spot"]
+    x = np.arange(len(meshes))
+    width = 0.34
+    for offset, method, label in [(-width / 2, "normal", "normal"), (width / 2, "antithetic", "antithetic")]:
+        vals = []
+        errs = []
+        for mesh in meshes:
+            values = metric_values(mesh, "antithetic_compare", method, "mean_sample_variance")
+            vals.append(mean(values))
+            errs.append(se(values) if math.isfinite(se(values)) else 0.0)
+        ax.bar(x + offset, vals, width, yerr=errs, capsize=3, label=label)
+    ax.set_xticks(x, [mesh.capitalize() for mesh in meshes])
+    ax.set_ylabel("mean sample variance")
+    ax.set_title("Antithetic sampling variance diagnostic")
+    ax.legend()
+    path = ASSET_DIR / out_name
+    fig.savefig(path)
+    plt.close(fig)
+    return path
+
+
+def plot_lazy_refinement_runtime(out_name: str) -> Path:
+    plt = plot_setup()
+    fig, ax = plt.subplots(figsize=(6.4, 4.0), constrained_layout=True)
+    meshes = ["bunny", "spot"]
+    x = np.arange(len(meshes))
+    width = 0.34
+    for offset, method, label in [(-width / 2, "full_exact", "full exact"), (width / 2, "lazy_threshold_x1", "lazy x1")]:
+        vals = []
+        errs = []
+        for mesh in meshes:
+            values = metric_values(mesh, "lazy_refinement", method, "elapsed_seconds")
+            vals.append(mean(values))
+            errs.append(se(values) if math.isfinite(se(values)) else 0.0)
+        ax.bar(x + offset, vals, width, yerr=errs, capsize=3, label=label)
+    ax.set_xticks(x, [mesh.capitalize() for mesh in meshes])
+    ax.set_ylabel("runtime seconds")
+    ax.set_title("Lazy star-radius refinement runtime diagnostic")
+    ax.legend()
+    path = ASSET_DIR / out_name
+    fig.savefig(path)
+    plt.close(fig)
+    return path
+
+
 def generate_assets() -> dict[str, Path]:
     REPORT_DIR.mkdir(exist_ok=True)
     ASSET_DIR.mkdir(parents=True, exist_ok=True)
@@ -352,6 +441,10 @@ def generate_assets() -> dict[str, Path]:
     assets["epsilon_panel"] = plot_epsilon_panel("fig3_neumann_epsilon_sweep.png")
     assets["boundary_bias_bar"] = plot_boundary_bias_summary("fig4_boundary_bias_indicator_summary.png")
     assets["top_correlations"] = plot_top_correlations("fig5_top10_geometry_correlations.png")
+    opt_summary = optimization_diagnostic_summary()
+    write_csv(ASSET_DIR / "optimization_diagnostic_summary.csv", opt_summary)
+    assets["antithetic_variance"] = plot_antithetic_variance("fig13_antithetic_variance_diagnostic.png")
+    assets["lazy_runtime"] = plot_lazy_refinement_runtime("fig14_lazy_refinement_runtime.png")
 
     stats, ratios = controlled_stats()
     write_csv(ASSET_DIR / "controlled_matched_bin_statistics.csv", stats)
@@ -405,6 +498,8 @@ def source_inventory() -> list[dict[str, str]]:
         ("experiments/controlled_geometry_experiments_20260606/distance_controlled_query_counts.csv", "Feasible query counts by mesh and distance bin.", "Experiment 5 limitations and missing Spot bin 4."),
         ("experiments/rerun_cross_mesh_20260606/wost_bunny/diagnostics/variance_adaptive_comparison.csv", "Bunny variance-adaptive sampling comparison.", "Diagnostic/optimization tools section."),
         ("experiments/rerun_cross_mesh_20260606/wost_spot/diagnostics/variance_adaptive_comparison.csv", "Spot variance-adaptive sampling comparison.", "Diagnostic/optimization tools section."),
+        ("experiments/rerun_cross_mesh_20260606/wost_bunny/experiments/optimization_summary.csv", "Bunny antithetic, lazy refinement, and other optimization diagnostics.", "Diagnostic/optimization tools section and Figures 13-14."),
+        ("experiments/rerun_cross_mesh_20260606/wost_spot/experiments/optimization_summary.csv", "Spot antithetic, lazy refinement, and other optimization diagnostics.", "Diagnostic/optimization tools section and Figures 13-14."),
         ("experiments/rerun_cross_mesh_20260606/wost_bunny/diagnostics/live_trace.csv", "Bunny live random-walk trace data.", "Live tracing diagnostic discussion."),
         ("experiments/rerun_cross_mesh_20260606/wost_spot/diagnostics/live_trace.csv", "Spot live random-walk trace data.", "Live tracing diagnostic discussion."),
         ("experiments/rerun_cross_mesh_20260606/command_log.txt", "Exact commands used for the cross-mesh rerun.", "Methods and provenance."),
@@ -433,11 +528,13 @@ def load_final_numbers() -> dict[str, Any]:
     spot_high = [row for row in spot_neu if row["benchmark_name"] == "neumann_convergence" and row["walks_per_point"] in {"256", "1024"}]
     controlled_ratios = read_csv(ASSET_DIR / "controlled_matched_bin_ratios.csv")
     controlled_stats_rows = read_csv(ASSET_DIR / "controlled_matched_bin_statistics.csv")
+    optimization_summary = read_csv(ASSET_DIR / "optimization_diagnostic_summary.csv")
     eps_ratios = read_csv(CONTROLLED / "epsilon_distance_sensitivity_ratios.csv")
     return {
         "spot_high": spot_high,
         "controlled_ratios": controlled_ratios,
         "controlled_stats": controlled_stats_rows,
+        "optimization_summary": optimization_summary,
         "eps_ratios": eps_ratios,
     }
 
@@ -476,10 +573,45 @@ def table_controlled_stats(rows: list[dict[str, str]]) -> list[str]:
     )
 
 
+def table_optimization_summary(rows: list[dict[str, str]]) -> list[str]:
+    out_rows = []
+    for row in rows:
+        out_rows.append({
+            "mesh": row["mesh"],
+            "normal variance": fmt(row["antithetic_normal_mean_variance"]),
+            "antithetic variance": fmt(row["antithetic_mean_variance"]),
+            "variance ratio": fmt(row["antithetic_variance_ratio"]),
+            "normal RMSE": fmt(row["normal_rmse"]),
+            "antithetic RMSE": fmt(row["antithetic_rmse"]),
+            "full exact sec": fmt(row["lazy_full_exact_seconds"]),
+            "lazy x1 sec": fmt(row["lazy_x1_seconds"]),
+            "speedup": fmt(row["lazy_x1_speedup"]),
+            "lazy x1 RMSE": fmt(row["lazy_x1_rmse"]),
+            "exact refinement ratio": fmt(row["lazy_x1_exact_refinement_ratio"]),
+        })
+    return md_table(
+        out_rows,
+        [
+            "mesh",
+            "normal variance",
+            "antithetic variance",
+            "variance ratio",
+            "normal RMSE",
+            "antithetic RMSE",
+            "full exact sec",
+            "lazy x1 sec",
+            "speedup",
+            "lazy x1 RMSE",
+            "exact refinement ratio",
+        ],
+    )
+
+
 def write_final_report(asset_map: dict[str, Path]) -> None:
     nums = load_final_numbers()
     stats = nums["controlled_stats"]
     ratios = nums["controlled_ratios"]
+    opt_rows = nums["optimization_summary"]
 
     ratios_rows = []
     for row in ratios:
@@ -519,7 +651,7 @@ def write_final_report(asset_map: dict[str, Path]) -> None:
         },
         {
             "Claim": "Optimization tools are diagnostic, not general fixes",
-            "Evidence": "Adaptive, antithetic, lazy refinement, BVH, and live-trace outputs expose variance/runtime/path behavior.",
+            "Evidence": "Adaptive, antithetic, lazy refinement, BVH, and live-trace outputs expose variance/runtime/path behavior; Figures 10-14 summarize the main diagnostics.",
             "Limitation / caution": "They should not be presented as guaranteed accuracy improvements.",
         },
     ]
@@ -695,7 +827,23 @@ def write_final_report(asset_map: dict[str, Path]) -> None:
         "",
         "**Figure 12.** Spot live path trace. The trace is qualitative evidence only: it illustrates reflection-heavy behavior near difficult Neumann regions but does not by itself establish a mechanism.",
         "",
+        f"![Antithetic sampling variance diagnostic]({asset_ref(asset_map['antithetic_variance'])})",
+        "",
+        "**Figure 13.** Antithetic sampling variance diagnostic. Paired directions reduce the measured sample variance in these diagnostic runs on both Bunny and Spot; this addresses estimator variance, not epsilon or geometry-related systematic error.",
+        "",
+        f"![Lazy star-radius refinement runtime diagnostic]({asset_ref(asset_map['lazy_runtime'])})",
+        "",
+        "**Figure 14.** Lazy star-radius refinement runtime diagnostic. The lazy x1 setting substantially reduces runtime compared with full exact star-radius refinement while preserving the tested mean RMSE in these runs.",
+        "",
         "These tools are tied to the research question as diagnostics rather than accuracy guarantees. **Adaptive sampling** asks where variance concentrates. The fact that Spot remains close to the maximum sample count suggests that high variance is widespread in the sampled region, so adaptive sampling is less useful as a speedup but still useful as a variance diagnostic. **Antithetic sampling** asks whether paired samples can reduce estimator variance in diagnostic runs. **Lazy refinement** asks how much runtime can be saved without changing the tested mean RMSE in the diagnostic setting. **BVH acceleration** asks whether geometry querying is efficient enough for repeated WoSt experiments. **Live trace** asks what difficult reflection-heavy paths look like. The trace is qualitative evidence only. It illustrates reflection-heavy behavior near difficult Neumann regions but does not by itself establish a mechanism.",
+        "",
+        "### Antithetic and lazy-refinement summary",
+        "",
+        "The table below summarizes repeated diagnostic rows from the existing optimization summaries. Antithetic sampling lowers mean sample variance in both meshes. Lazy x1 refinement reduces exact star-radius work and runtime while keeping the same reported mean RMSE as full exact refinement in this diagnostic setting. These rows should be read as paired engineering diagnostics, not as a guarantee for every geometry or boundary condition.",
+        "",
+    ]
+    lines += table_optimization_summary(opt_rows)
+    lines += [
         "",
         "## 11. Discussion",
         "",
@@ -742,6 +890,7 @@ def write_final_report(asset_map: dict[str, Path]) -> None:
         "",
         "- `reports/final_assets/controlled_matched_bin_statistics.csv`",
         "- `reports/final_assets/controlled_matched_bin_ratios.csv`",
+        "- `reports/final_assets/optimization_diagnostic_summary.csv`",
         "- `reports/final_report_provenance.md`",
         "- Source reports: `experiments/rerun_cross_mesh_20260606/RERUN_SUMMARY.md`, `experiments/geometry_sensitive_analysis_20260606/GEOMETRY_SENSITIVE_REPORT.md`, `experiments/controlled_geometry_experiments_20260606/CONTROLLED_GEOMETRY_REPORT.md`",
         "",
