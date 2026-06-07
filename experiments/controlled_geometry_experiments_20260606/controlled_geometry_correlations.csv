@@ -1,0 +1,11 @@
+mesh,dataset,target,feature,pearson_r,spearman_r,partial_r_control_nearest_distance,n
+bunny,part1_neumann,abs_error,nearest_distance_proxy_norm,-0.5495225260618593,-0.6046425484627732,,90
+bunny,part1_neumann,abs_error,local_normal_variation,-0.20786416046106015,-0.2480469559286252,-0.15574315737311534,90
+bunny,part1_neumann,abs_error,local_edge_mean_norm,0.01998458796473774,0.11434263300971075,0.09981098727067657,90
+bunny,part1_neumann,abs_error,local_aspect_ratio,-0.04957563013758007,-0.05433127270439819,0.05389905075101398,90
+bunny,part1_neumann,abs_error,local_quality,0.14995963548956287,0.13943380258592372,-0.0005967539530296137,90
+spot,part1_neumann,abs_error,nearest_distance_proxy_norm,-0.5522466833162073,-0.6156766687078995,,70
+spot,part1_neumann,abs_error,local_normal_variation,-0.1957470053804203,-0.03543555148415578,-0.12735512193623877,70
+spot,part1_neumann,abs_error,local_edge_mean_norm,0.02044288357905609,0.06549947155457074,0.14350338820345548,70
+spot,part1_neumann,abs_error,local_aspect_ratio,0.08317971272304986,0.10375270287123962,-0.006675322483759799,70
+spot,part1_neumann,abs_error,local_quality,-0.026553597622399356,-0.06980427251701381,0.050395456175796605,70

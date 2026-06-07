@@ -15,6 +15,7 @@
 #include <limits>
 #include <numeric>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -49,6 +50,7 @@ struct CliOptions {
     std::string summaryOut = "results/live_demo_summary.csv";
     std::string outPath = "";
     std::string csvPath = "";
+    std::string pointsIn = "";
     int traceWalks = 8;
     float biasThreshold = 2.0f;
     int pilotSamples = 32;
@@ -199,6 +201,50 @@ std::vector<vec3> GenerateQueryPoints(int count, float L, uint64_t seed) {
     return points;
 }
 
+std::vector<vec3> ReadPointListCsv(const std::string& path) {
+    std::vector<vec3> points;
+    std::ifstream in(path);
+    if (!in.is_open()) {
+        std::cerr << "Failed to open point list: " << path << "\n";
+        return points;
+    }
+    std::string line;
+    if (!std::getline(in, line)) return points;
+
+    std::vector<std::string> headers;
+    {
+        std::stringstream ss(line);
+        std::string token;
+        while (std::getline(ss, token, ',')) headers.push_back(token);
+    }
+    int ix = -1, iy = -1, iz = -1;
+    for (int i = 0; i < static_cast<int>(headers.size()); ++i) {
+        if (headers[i] == "x") ix = i;
+        else if (headers[i] == "y") iy = i;
+        else if (headers[i] == "z") iz = i;
+    }
+    if (ix < 0 || iy < 0 || iz < 0) {
+        std::cerr << "Point list must contain x,y,z columns: " << path << "\n";
+        return points;
+    }
+
+    while (std::getline(in, line)) {
+        if (line.empty()) continue;
+        std::vector<std::string> cols;
+        std::stringstream ss(line);
+        std::string token;
+        while (std::getline(ss, token, ',')) cols.push_back(token);
+        const int need = std::max(ix, std::max(iy, iz));
+        if (static_cast<int>(cols.size()) <= need) continue;
+        try {
+            points.push_back({std::stof(cols[ix]), std::stof(cols[iy]), std::stof(cols[iz])});
+        } catch (...) {
+            continue;
+        }
+    }
+    return points;
+}
+
 int CurrentThreadCount() {
 #ifdef _OPENMP
     return omp_get_max_threads();
@@ -230,14 +276,14 @@ void PrintUsage(const char* exe) {
     std::cout
         << "Usage: " << exe << " [--mode convergence|epsilon|grid|adaptive|neumann|threads|geometry|case|"
         << "adaptive_compare|antithetic|lazy|epsilon_extrapolation|neumann_sanity|optimization|"
-        << "demo_point|bias_detector|variance_adaptive|all] "
+        << "demo_point|bias_detector|variance_adaptive|points|point_bias|all] "
         << "[--obj path] [--queries N] [--grid N] [--threads N] [--seed N] [--cube L]\n"
         << "Optimization knobs: [--min-samples N] [--max-samples N] [--batch-size N] "
         << "[--target-rse X] [--rse-eps X] [--lazy-threshold X] [--lazy-ratio X]\n"
         << "Demo/diagnostic knobs: [--point X Y Z] [--walks N] [--epsilon X] "
         << "[--boundary dirichlet|neumann] [--trace-out path] [--summary-out path] "
         << "[--out path] [--csv path] [--trace-walks N] [--bias-threshold X] "
-        << "[--pilot-samples N] [--target-std-error X] [--antithetic]\n";
+        << "[--pilot-samples N] [--target-std-error X] [--points-in path] [--antithetic]\n";
 }
 
 bool ParseArgs(int argc, char** argv, CliOptions& opts) {
@@ -350,6 +396,10 @@ bool ParseArgs(int argc, char** argv, CliOptions& opts) {
             const char* v = needValue(arg);
             if (!v) return false;
             opts.csvPath = v;
+        } else if (arg == "--points-in") {
+            const char* v = needValue(arg);
+            if (!v) return false;
+            opts.pointsIn = v;
         } else if (arg == "--trace-walks") {
             const char* v = needValue(arg);
             if (!v) return false;
@@ -697,6 +747,316 @@ BenchmarkMetrics RunPointBenchmark(const WoStKernel& kernel,
     }
 
     return metrics;
+}
+
+void WritePointListResultCsv(const std::string& path,
+                             const std::string& meshName,
+                             const std::string& boundaryMode,
+                             const WoStParams& params,
+                             uint64_t baseSeed,
+                             const std::vector<PointSolution>& solutions,
+                             const std::vector<char>& validFlags,
+                             const std::vector<char>& divergedFlags) {
+    namespace fs = std::filesystem;
+    fs::path outPath(path.empty() ? "results/point_list_results.csv" : path);
+    fs::create_directories(outPath.parent_path());
+    std::ofstream out(outPath);
+    if (!out.is_open()) {
+        std::cerr << "Failed to write point results: " << outPath.string() << "\n";
+        return;
+    }
+    out << "mesh,boundary,seed,point_index,x,y,z,value,exact,abs_error,std_error,"
+        << "sample_variance,samples_used,mean_steps,diverged,epsilon,walks_per_point,"
+        << "star_queries,fast_only_star_queries,exact_star_queries,is_valid\n";
+    for (size_t i = 0; i < solutions.size(); ++i) {
+        const PointSolution& s = solutions[i];
+        const bool valid = validFlags[i] != 0;
+        out << CsvEscape(meshName) << ','
+            << CsvEscape(boundaryMode) << ','
+            << baseSeed << ','
+            << i << ','
+            << std::setprecision(9) << s.pos.x << ','
+            << s.pos.y << ','
+            << s.pos.z << ',';
+        if (valid) {
+            out << s.value << ','
+                << s.exact << ','
+                << std::abs(s.value - s.exact) << ','
+                << s.stdErr << ','
+                << s.sampleVariance << ','
+                << s.samplesUsed << ','
+                << s.meanSteps << ','
+                << (divergedFlags[i] ? 1 : 0) << ','
+                << params.eps << ','
+                << params.numSamples << ','
+                << s.starQueries << ','
+                << s.fastOnlyStarQueries << ','
+                << s.exactStarQueries << ",1\n";
+        } else {
+            out << ",,,,,,,,"
+                << params.eps << ','
+                << params.numSamples
+                << ",,,0\n";
+        }
+    }
+    std::cout << "Wrote " << outPath.string() << "\n";
+}
+
+void AppendPointListSummaryCsv(const std::string& path,
+                               const BenchmarkMetrics& m,
+                               const std::string& runLabel) {
+    if (path.empty()) return;
+    namespace fs = std::filesystem;
+    fs::path outPath(path);
+    fs::create_directories(outPath.parent_path());
+    const bool writeHeader = !fs::exists(outPath) || fs::file_size(outPath) == 0;
+    std::ofstream out(outPath, std::ios::app);
+    if (!out.is_open()) {
+        std::cerr << "Failed to write summary CSV: " << outPath.string() << "\n";
+        return;
+    }
+    if (writeHeader) {
+        out << "run_label,benchmark_name,mesh_name,num_query_points,valid_points,walks_per_point,"
+            << "epsilon,max_steps,num_threads,elapsed_seconds,rmse,mae,max_abs_error,"
+            << "mean_std_error,mean_steps,diverged_count,mean_samples_used\n";
+    }
+    out << CsvEscape(runLabel) << ','
+        << CsvEscape(m.benchmarkName) << ','
+        << CsvEscape(m.meshName) << ','
+        << m.numQueryPoints << ','
+        << m.validPoints << ','
+        << m.walksPerPoint << ','
+        << std::setprecision(9) << m.epsilon << ','
+        << m.maxSteps << ','
+        << m.numThreads << ','
+        << m.elapsedSeconds << ','
+        << m.rmse << ','
+        << m.mae << ','
+        << m.maxAbsError << ','
+        << m.meanStdError << ','
+        << m.meanSteps << ','
+        << m.divergedCount << ','
+        << m.meanSamplesUsed << '\n';
+}
+
+BenchmarkMetrics RunPointListBenchmark(const WoStKernel& kernel,
+                                       const CliOptions& opts,
+                                       const std::string& meshName) {
+    const std::vector<vec3> queries = ReadPointListCsv(opts.pointsIn);
+    if (queries.empty()) {
+        throw std::runtime_error("No points loaded for --mode points");
+    }
+    const BoundarySetup boundary = BoundaryFromMode(opts.boundaryMode);
+    WoStParams params;
+    params.numSamples = 256;
+    params.maxSteps = 512;
+    params.eps = 1e-4f;
+    params.adaptiveSampling = false;
+    params.numSamples = opts.walks;
+    params.eps = opts.epsilon;
+    params.maxSteps = opts.boundaryMode == "neumann" ? 2048 : 512;
+    params.useAntitheticSampling = opts.useAntithetic;
+
+    const int n = static_cast<int>(queries.size());
+    std::vector<PointSolution> solutions(n);
+    std::vector<char> validFlags(n, 0);
+    std::vector<char> divergedFlags(n, 0);
+    for (int i = 0; i < n; ++i) {
+        solutions[i].pos = queries[i];
+        solutions[i].exact = LinearExact(queries[i]);
+    }
+
+    const auto t0 = std::chrono::high_resolution_clock::now();
+#pragma omp parallel for schedule(dynamic, 32)
+    for (int i = 0; i < n; ++i) {
+        const vec3 point = queries[i];
+        if (!kernel.InDomain(point)) continue;
+        WoStParams pointParams = params;
+        pointParams.seed = SeedFor(opts.seed, static_cast<uint64_t>(i), 0xB17B1ull);
+        WalkResult r = kernel.SolvePoisson(point,
+                                           boundary.gInner,
+                                           boundary.isInnerNeumann,
+                                           boundary.hInner,
+                                           boundary.gOuter,
+                                           boundary.source,
+                                           pointParams);
+        PointSolution ps;
+        ps.pos = point;
+        ps.value = r.value;
+        ps.stdErr = r.stdErr;
+        ps.sampleVariance = r.sampleVariance;
+        ps.meanSteps = r.meanSteps;
+        ps.samplesUsed = r.samplesUsed;
+        ps.exact = LinearExact(point);
+        ps.starQueries = r.starQueries;
+        ps.fastOnlyStarQueries = r.fastOnlyStarQueries;
+        ps.exactStarQueries = r.exactStarQueries;
+        solutions[i] = ps;
+        validFlags[i] = 1;
+        divergedFlags[i] = r.anyDiverged ? 1 : 0;
+    }
+    const auto t1 = std::chrono::high_resolution_clock::now();
+    const double elapsed = std::chrono::duration<double>(t1 - t0).count();
+    BenchmarkMetrics metrics = AccumulateMetrics(
+        "point_list", meshName, n, params, elapsed, solutions, validFlags, divergedFlags);
+    PrintMetrics(metrics);
+    WritePointListResultCsv(opts.outPath, meshName, opts.boundaryMode, params, opts.seed,
+                            solutions, validFlags, divergedFlags);
+    AppendPointListSummaryCsv(opts.csvPath, metrics, "point_list");
+    return metrics;
+}
+
+void RunPointListBias(const WoStKernel& kernel,
+                      const CliOptions& opts,
+                      const std::string& meshName) {
+    const std::vector<vec3> queries = ReadPointListCsv(opts.pointsIn);
+    if (queries.empty()) {
+        throw std::runtime_error("No points loaded for --mode point_bias");
+    }
+    const BoundarySetup boundary = BoundaryFromMode(opts.boundaryMode);
+    WoStParams base;
+    base.numSamples = 256;
+    base.maxSteps = 512;
+    base.eps = 1e-4f;
+    base.adaptiveSampling = false;
+    base.numSamples = opts.walks;
+    base.eps = opts.epsilon;
+    base.maxSteps = opts.boundaryMode == "neumann" ? 2048 : 512;
+    base.useAntitheticSampling = opts.useAntithetic;
+
+    struct BiasPointResult {
+        vec3 pos;
+        bool valid = false;
+        bool divergedEps = false;
+        bool divergedHalf = false;
+        float valueEps = 0.f;
+        float valueHalf = 0.f;
+        float stdErrEps = 0.f;
+        float stdErrHalf = 0.f;
+        float varEps = 0.f;
+        float varHalf = 0.f;
+        float stepsEps = 0.f;
+        float stepsHalf = 0.f;
+        int samplesEps = 0;
+        int samplesHalf = 0;
+    };
+
+    const int n = static_cast<int>(queries.size());
+    std::vector<BiasPointResult> results(n);
+    const auto t0 = std::chrono::high_resolution_clock::now();
+#pragma omp parallel for schedule(dynamic, 16)
+    for (int i = 0; i < n; ++i) {
+        const vec3 point = queries[i];
+        BiasPointResult out;
+        out.pos = point;
+        if (kernel.InDomain(point)) {
+            WoStParams p1 = base;
+            p1.seed = SeedFor(opts.seed, static_cast<uint64_t>(i), 0xB1A5u);
+            WalkResult r1 = kernel.SolvePoisson(point,
+                                                boundary.gInner,
+                                                boundary.isInnerNeumann,
+                                                boundary.hInner,
+                                                boundary.gOuter,
+                                                boundary.source,
+                                                p1);
+            WoStParams p2 = base;
+            p2.eps = opts.epsilon * 0.5f;
+            p2.seed = SeedFor(opts.seed, static_cast<uint64_t>(i), 0xB1A6u);
+            WalkResult r2 = kernel.SolvePoisson(point,
+                                                boundary.gInner,
+                                                boundary.isInnerNeumann,
+                                                boundary.hInner,
+                                                boundary.gOuter,
+                                                boundary.source,
+                                                p2);
+            out.valid = true;
+            out.divergedEps = r1.anyDiverged;
+            out.divergedHalf = r2.anyDiverged;
+            out.valueEps = r1.value;
+            out.valueHalf = r2.value;
+            out.stdErrEps = r1.stdErr;
+            out.stdErrHalf = r2.stdErr;
+            out.varEps = r1.sampleVariance;
+            out.varHalf = r2.sampleVariance;
+            out.stepsEps = r1.meanSteps;
+            out.stepsHalf = r2.meanSteps;
+            out.samplesEps = r1.samplesUsed;
+            out.samplesHalf = r2.samplesUsed;
+        }
+        results[i] = out;
+    }
+    const auto t1 = std::chrono::high_resolution_clock::now();
+    const double elapsed = std::chrono::duration<double>(t1 - t0).count();
+
+    namespace fs = std::filesystem;
+    fs::path outPath(opts.outPath.empty() ? "results/point_bias.csv" : opts.outPath);
+    fs::create_directories(outPath.parent_path());
+    std::ofstream out(outPath);
+    if (!out.is_open()) {
+        std::cerr << "Failed to write point bias CSV: " << outPath.string() << "\n";
+        return;
+    }
+    out << "mesh,boundary,seed,point_index,x,y,z,exact,epsilon,epsilon_half,"
+        << "value_epsilon,value_epsilon_half,bias_indicator,normalized_bias,"
+        << "abs_error_epsilon,abs_error_epsilon_half,std_error_epsilon,std_error_epsilon_half,"
+        << "sample_variance_epsilon,sample_variance_epsilon_half,mean_steps_epsilon,"
+        << "mean_steps_epsilon_half,samples_epsilon,samples_epsilon_half,diverged_epsilon,"
+        << "diverged_epsilon_half,is_valid\n";
+
+    int valid = 0;
+    double sumBias = 0.0, sumSq1 = 0.0, sumSq2 = 0.0, sumSteps = 0.0;
+    for (int i = 0; i < n; ++i) {
+        const auto& r = results[i];
+        const float exact = LinearExact(r.pos);
+        out << CsvEscape(meshName) << ','
+            << CsvEscape(opts.boundaryMode) << ','
+            << opts.seed << ','
+            << i << ','
+            << std::setprecision(9) << r.pos.x << ','
+            << r.pos.y << ','
+            << r.pos.z << ','
+            << exact << ','
+            << opts.epsilon << ','
+            << opts.epsilon * 0.5f << ',';
+        if (r.valid) {
+            const float bias = std::abs(r.valueEps - r.valueHalf);
+            const float normBias = bias / (r.stdErrEps + r.stdErrHalf + 1e-6f);
+            const float err1 = std::abs(r.valueEps - exact);
+            const float err2 = std::abs(r.valueHalf - exact);
+            out << r.valueEps << ','
+                << r.valueHalf << ','
+                << bias << ','
+                << normBias << ','
+                << err1 << ','
+                << err2 << ','
+                << r.stdErrEps << ','
+                << r.stdErrHalf << ','
+                << r.varEps << ','
+                << r.varHalf << ','
+                << r.stepsEps << ','
+                << r.stepsHalf << ','
+                << r.samplesEps << ','
+                << r.samplesHalf << ','
+                << (r.divergedEps ? 1 : 0) << ','
+                << (r.divergedHalf ? 1 : 0) << ",1\n";
+            ++valid;
+            sumBias += bias;
+            sumSq1 += static_cast<double>(r.valueEps - exact) * static_cast<double>(r.valueEps - exact);
+            sumSq2 += static_cast<double>(r.valueHalf - exact) * static_cast<double>(r.valueHalf - exact);
+            sumSteps += r.stepsEps;
+        } else {
+            for (int c = 0; c < 16; ++c) out << ',';
+            out << "0\n";
+        }
+    }
+    std::cout << "\n=== point_bias ===\n"
+              << "valid: " << valid << " / " << n << "\n"
+              << "mean_bias: " << (valid ? sumBias / valid : 0.0)
+              << "  rmse_epsilon: " << (valid ? std::sqrt(sumSq1 / valid) : 0.0)
+              << "  rmse_epsilon_half: " << (valid ? std::sqrt(sumSq2 / valid) : 0.0)
+              << "  mean_steps: " << (valid ? sumSteps / valid : 0.0)
+              << "  elapsed_seconds: " << elapsed << "\n"
+              << "Wrote " << outPath.string() << "\n";
 }
 
 ExperimentMetrics AccumulateExperimentMetrics(const std::string& experimentName,
@@ -1995,6 +2355,7 @@ int main(int argc, char** argv) {
         mode != "epsilon_extrapolation" && mode != "neumann_sanity" &&
         mode != "optimization" && mode != "demo_point" &&
         mode != "bias_detector" && mode != "variance_adaptive" &&
+        mode != "points" && mode != "point_bias" &&
         mode != "all") {
         std::cerr << "Unknown mode: " << mode << "\n";
         PrintUsage(argv[0]);
@@ -2035,6 +2396,14 @@ int main(int argc, char** argv) {
     if (mode == "variance_adaptive") {
         RunVarianceAdaptive(kernel, opts);
         std::cout << "\nVariance-adaptive outputs written under results/.\n";
+        return 0;
+    }
+    if (mode == "points") {
+        RunPointListBenchmark(kernel, opts, opts.objFile);
+        return 0;
+    }
+    if (mode == "point_bias") {
+        RunPointListBias(kernel, opts, opts.objFile);
         return 0;
     }
     if (mode == "case") {

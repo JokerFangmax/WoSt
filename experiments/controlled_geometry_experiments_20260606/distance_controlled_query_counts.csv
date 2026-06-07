@@ -1,0 +1,9 @@
+mesh,mesh_variant,distance_bin,bin_min,bin_max,requested_points,sampled_points,complete
+bunny,original,1,0.05,0.15,24,24,1
+bunny,original,2,0.15,0.3,24,24,1
+bunny,original,3,0.3,0.6,24,24,1
+bunny,original,4,0.6,1.0,24,24,1
+spot,original,1,0.05,0.15,24,24,1
+spot,original,2,0.15,0.3,24,24,1
+spot,original,3,0.3,0.6,24,24,1
+spot,original,4,0.6,1.0,24,0,0

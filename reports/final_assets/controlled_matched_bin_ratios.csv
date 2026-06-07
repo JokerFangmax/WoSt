@@ -1,0 +1,5 @@
+distance_bin,spot_over_bunny_error,spot_over_bunny_bias_indicator,spot_over_bunny_steps,status
+1,3.3834939255433554,3.3342763576576786,1.280075274465591,descriptive matched-bin ratio
+2,3.6846060482466796,2.370883431409957,0.7648760152892239,descriptive matched-bin ratio
+3,1.371097923989534,1.832865874683427,0.746170341632296,descriptive matched-bin ratio
+4,,,,missing mesh/bin pair

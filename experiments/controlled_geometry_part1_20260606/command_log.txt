@@ -1,0 +1,99 @@
+# Controlled geometry experiment command log
+
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode points --obj C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj --cube 0.22 --threads 8 --seed 12601 --boundary neumann --epsilon 0.0001 --walks 256 --points-in C:\THU\projects\WoSt_Final_project-1\experiments\controlled_geometry_part1_20260606\point_lists\bunny_original_distance_controlled_points.csv --out C:\THU\projects\WoSt_Final_project-1\experiments\controlled_geometry_part1_20260606\raw\bunny_original_points_eps_1e-04_walks_256.csv
+# cwd: C:\THU\projects\WoSt_Final_project-1
+WoSt linear Dirichlet benchmark
+mode: points
+obj: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+query points: 20000
+grid: 48^3
+cube half extent: 0.22
+threads: 8
+seed: 12601
+adaptive min/max/batch: 64 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: neumann  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 70580 triangles, 105870 silhouette edges.
+
+=== point_list ===
+mesh: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+valid points: 90 / 96
+walks_per_point: 256  epsilon: 0.0001  max_steps: 2048
+elapsed_seconds: 18.1534
+points_per_second: 5.28827
+walks_per_second: 1269.19
+RMSE: 0.0241396  MAE: 0.0167114  max_abs_error: 0.0878192
+mean_std_error: 0.0106822  mean_steps: 54.8874  mean_samples_used: 256
+diverged_count: 0
+Wrote C:\THU\projects\WoSt_Final_project-1\experiments\controlled_geometry_part1_20260606\raw\bunny_original_points_eps_1e-04_walks_256.csv
+
+[exit=0]
+
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode point_bias --obj C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj --cube 0.22 --threads 8 --seed 19601 --boundary neumann --epsilon 0.0001 --walks 256 --points-in C:\THU\projects\WoSt_Final_project-1\experiments\controlled_geometry_part1_20260606\point_lists\bunny_original_distance_controlled_points.csv --out C:\THU\projects\WoSt_Final_project-1\experiments\controlled_geometry_part1_20260606\raw\bunny_original_bias_eps_1e-04_walks_256.csv
+# cwd: C:\THU\projects\WoSt_Final_project-1
+WoSt linear Dirichlet benchmark
+mode: point_bias
+obj: C:\THU\projects\WoSt_Final_project-1\obj\Bunny.obj
+query points: 20000
+grid: 48^3
+cube half extent: 0.22
+threads: 8
+seed: 19601
+adaptive min/max/batch: 64 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: neumann  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 70580 triangles, 105870 silhouette edges.
+
+=== point_bias ===
+valid: 90 / 96
+mean_bias: 0.0123613  rmse_epsilon: 0.0238919  rmse_epsilon_half: 0.0212447  mean_steps: 55.1099  elapsed_seconds: 23.1106
+Wrote C:\THU\projects\WoSt_Final_project-1\experiments\controlled_geometry_part1_20260606\raw\bunny_original_bias_eps_1e-04_walks_256.csv
+
+[exit=0]
+
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode points --obj C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj --cube 1.1 --threads 8 --seed 54577 --boundary neumann --epsilon 0.0001 --walks 256 --points-in C:\THU\projects\WoSt_Final_project-1\experiments\controlled_geometry_part1_20260606\point_lists\spot_original_distance_controlled_points.csv --out C:\THU\projects\WoSt_Final_project-1\experiments\controlled_geometry_part1_20260606\raw\spot_original_points_eps_1e-04_walks_256.csv
+# cwd: C:\THU\projects\WoSt_Final_project-1
+WoSt linear Dirichlet benchmark
+mode: points
+obj: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+query points: 20000
+grid: 48^3
+cube half extent: 1.1
+threads: 8
+seed: 54577
+adaptive min/max/batch: 64 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: neumann  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 5856 triangles, 8784 silhouette edges.
+
+=== point_list ===
+mesh: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+valid points: 70 / 72
+walks_per_point: 256  epsilon: 0.0001  max_steps: 2048
+elapsed_seconds: 2.36114
+points_per_second: 30.4937
+walks_per_second: 7589.55
+RMSE: 0.10367  MAE: 0.0628368  max_abs_error: 0.474527
+mean_std_error: 0.0315265  mean_steps: 65.6307  mean_samples_used: 256
+diverged_count: 5
+Wrote C:\THU\projects\WoSt_Final_project-1\experiments\controlled_geometry_part1_20260606\raw\spot_original_points_eps_1e-04_walks_256.csv
+
+[exit=0]
+
+$ C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode point_bias --obj C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj --cube 1.1 --threads 8 --seed 61577 --boundary neumann --epsilon 0.0001 --walks 256 --points-in C:\THU\projects\WoSt_Final_project-1\experiments\controlled_geometry_part1_20260606\point_lists\spot_original_distance_controlled_points.csv --out C:\THU\projects\WoSt_Final_project-1\experiments\controlled_geometry_part1_20260606\raw\spot_original_bias_eps_1e-04_walks_256.csv
+# cwd: C:\THU\projects\WoSt_Final_project-1
+WoSt linear Dirichlet benchmark
+mode: point_bias
+obj: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+query points: 20000
+grid: 48^3
+cube half extent: 1.1
+threads: 8
+seed: 61577
+adaptive min/max/batch: 64 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: neumann  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 5856 triangles, 8784 silhouette edges.
+
+=== point_bias ===
+valid: 70 / 72
+mean_bias: 0.0363941  rmse_epsilon: 0.0920691  rmse_epsilon_half: 0.0884211  mean_steps: 66.0488  elapsed_seconds: 2.99982
+Wrote C:\THU\projects\WoSt_Final_project-1\experiments\controlled_geometry_part1_20260606\raw\spot_original_bias_eps_1e-04_walks_256.csv
+
+[exit=0]

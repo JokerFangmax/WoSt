@@ -51,6 +51,18 @@ experiments/rerun_cross_mesh_20260606/
   RERUN_SUMMARY.md
 ```
 
+## Visual Overview
+
+This report is organized as figures first and tables second. The tables preserve exact values, while the figures make the cross-mesh trends easier to read.
+
+| Question | Figure | Main reading |
+|---|---|---|
+| Does Dirichlet behave normally? | Bunny/Spot Dirichlet RMSE-vs-walks plots | WoSt and Zombie show the expected Monte Carlo convergence trend. |
+| What changes under Mixed Neumann? | Bunny/Spot Neumann RMSE-vs-walks plots | Neumann convergence is less uniform and more mesh-sensitive. |
+| How important is epsilon? | Bunny/Spot Neumann epsilon-tradeoff plots | Coarse epsilon can dominate Neumann error, especially on Spot. |
+| Where does boundary bias appear? | Boundary-bias detector plots | Bias is spatially structured and stronger on Spot. |
+| What do optimization diagnostics show? | Adaptive tradeoff/sample maps and live traces | These tools diagnose variance, sample allocation, and difficult path behavior rather than proving universal accuracy gains. |
+
 WoSt main CSVs:
 
 - `wost_bunny/results/benchmark_summary.csv`
@@ -91,6 +103,14 @@ Zombie comparison CSVs:
 
 ### Dirichlet Convergence
 
+![Bunny Dirichlet convergence](zombie_bunny_dirichlet/rmse_vs_walks_comparison.png)
+
+**Figure.** Bunny Dirichlet results show normal Monte Carlo convergence and close agreement between WoSt and Zombie.
+
+![Spot Dirichlet convergence](zombie_spot_dirichlet/rmse_vs_walks_comparison.png)
+
+**Figure.** Spot Dirichlet results also converge normally, supporting the baseline validity of the rerun.
+
 | Mesh | Walks | WoSt RMSE | Zombie RMSE | Zombie / WoSt |
 |---|---:|---:|---:|---:|
 | Bunny | 16 | 0.03042 | 0.03494 | 1.148 |
@@ -104,6 +124,14 @@ Zombie comparison CSVs:
 
 ### Mixed Neumann Convergence
 
+![Bunny Mixed Neumann convergence](zombie_bunny_neumann/neumann_rmse_vs_walks_comparison.png)
+
+**Figure.** Bunny Mixed Neumann convergence is less clean than Dirichlet convergence, showing the extra sensitivity introduced by reflection and Neumann boundary handling.
+
+![Spot Mixed Neumann convergence](zombie_spot_neumann/neumann_rmse_vs_walks_comparison.png)
+
+**Figure.** Spot Mixed Neumann remains much harder than Spot Dirichlet, motivating the later geometry-sensitive and distance-controlled analyses.
+
 | Mesh | Walks | WoSt RMSE | Zombie RMSE | Zombie / WoSt | WoSt steps | Zombie steps |
 |---|---:|---:|---:|---:|---:|---:|
 | Bunny | 16 | 0.04140 | 0.03739 | 0.903 | 30.93 | 249.87 |
@@ -116,6 +144,14 @@ Zombie comparison CSVs:
 | Spot | 1024 | 0.16710 | 0.11072 | 0.663 | 106.16 | 368.60 |
 
 ### Mixed Neumann Epsilon Sweep at 256 Walks
+
+![Bunny Mixed Neumann epsilon tradeoff](zombie_bunny_neumann/neumann_epsilon_tradeoff_comparison.png)
+
+**Figure.** Bunny Neumann error is highly sensitive to coarse epsilon, with much larger RMSE at `1e-2`.
+
+![Spot Mixed Neumann epsilon tradeoff](zombie_spot_neumann/neumann_epsilon_tradeoff_comparison.png)
+
+**Figure.** Spot shows stronger absolute epsilon sensitivity, with coarse epsilon producing very large Neumann error.
 
 | Mesh | Epsilon | WoSt RMSE | Zombie RMSE | Zombie / WoSt | WoSt steps | Zombie steps |
 |---|---:|---:|---:|---:|---:|---:|
@@ -132,12 +168,36 @@ Zombie comparison CSVs:
 
 ### Boundary Bias Detector
 
+![Bunny boundary bias detector](wost_bunny/diagnostics/boundary_bias_detector.png)
+
+**Figure.** Bunny boundary-bias detector shows spatially localized epsilon sensitivity at the diagnostic grid points.
+
+![Spot boundary bias detector](wost_spot/diagnostics/boundary_bias_detector.png)
+
+**Figure.** Spot has larger boundary-bias magnitude in the rerun, consistent with its harder Mixed Neumann behavior.
+
 | Mesh | Grid | Walks | Epsilon | Mean bias | Max bias | RMSE eps | RMSE eps/2 |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | Bunny | 16 | 128 | 1e-3 | 0.00942 | 0.19949 | 0.03247 | 0.02280 |
 | Spot | 16 | 128 | 1e-3 | 0.04337 | 0.60245 | 0.19807 | 0.17550 |
 
 ### Variance-Predicted Adaptive Sampling
+
+![Bunny variance-adaptive tradeoff](wost_bunny/diagnostics/variance_adaptive_tradeoff.png)
+
+**Figure.** Bunny adaptive sampling shows the expected tradeoff between fewer samples and increasing error as the tolerance is relaxed.
+
+![Spot variance-adaptive tradeoff](wost_spot/diagnostics/variance_adaptive_tradeoff.png)
+
+**Figure.** Spot adaptive sampling remains close to the maximum sample count, reflecting higher or more persistent variance in the sampled query set.
+
+![Bunny adaptive sample map](wost_bunny/diagnostics/variance_adaptive_samples_map.png)
+
+**Figure.** Bunny sample allocation is spatially nonuniform, supporting the use of adaptive sampling as a variance diagnostic.
+
+![Spot adaptive sample map](wost_spot/diagnostics/variance_adaptive_samples_map.png)
+
+**Figure.** Spot requires high sample allocation over much of the tested region, matching the higher variance and harder Neumann/geometry-sensitive behavior.
 
 | Mesh | Method | RMSE | Mean samples | Runtime |
 |---|---|---:|---:|---:|
@@ -152,6 +212,8 @@ Zombie comparison CSVs:
 
 ### Optimization Diagnostics
 
+The optimization rows below are best interpreted as diagnostic and engineering evidence. Antithetic sampling, lazy refinement, and BVH acceleration help analyze variance and runtime behavior, but they are not universal accuracy guarantees.
+
 | Mesh | Diagnostic | Key result |
 |---|---|---|
 | Bunny | Antithetic | mean variance 0.01762 -> 0.00494 |
@@ -161,10 +223,26 @@ Zombie comparison CSVs:
 
 ### Live Trace
 
+![Bunny live path trace](wost_bunny/diagnostics/live_trace_plot.png)
+
+**Figure.** Bunny live trace gives a qualitative view of the reflected random-walk paths used by the Neumann solver.
+
+![Spot live path trace](wost_spot/diagnostics/live_trace_plot.png)
+
+**Figure.** Spot live trace shows a representative difficult Neumann point with larger error, useful as a qualitative diagnostic rather than a statistical conclusion.
+
 | Mesh | Point | Walks | Runtime | Absolute error |
 |---|---|---:|---:|---:|
 | Bunny | `(0.05, 0.02, 0.08)` | 64 | 0.143s | 0.06463 |
 | Spot | `(0.8, 0.0, 0.2)` | 64 | 0.029s | 0.22723 |
+
+## Figure Takeaways
+
+- The Dirichlet plots validate the baseline: WoSt and Zombie agree closely and improve with more walks on both meshes.
+- The Mixed Neumann plots show the main difficulty: convergence is less uniform, and Spot remains much harder than Bunny.
+- The epsilon plots show that coarse epsilon can dominate Neumann error, especially in the Spot case.
+- Boundary-bias detector images make the epsilon sensitivity spatial: the problem is not just a scalar RMSE shift, but a geometry-dependent boundary effect.
+- Adaptive sampling and live-trace figures are most useful as diagnostics: they explain where variance and long paths appear, but should not be overclaimed as universal fixes.
 
 ## Notes
 

@@ -1,0 +1,11 @@
+mesh,dataset,target,feature,pearson_r,spearman_r,partial_r_control_nearest_distance,n
+bunny,part1_neumann,abs_error,nearest_distance_proxy_norm,-0.018221863749332153,-0.19047619047619052,,8
+bunny,part1_neumann,abs_error,local_normal_variation,-0.3597462343580096,-0.5714285714285715,-0.37942955279324647,8
+bunny,part1_neumann,abs_error,local_edge_mean_norm,0.28122175754457085,0.28571428571428575,0.3316083484934141,8
+bunny,part1_neumann,abs_error,local_aspect_ratio,0.15803788933437504,0.09523809523809526,0.1775455733223974,8
+bunny,part1_neumann,abs_error,local_quality,0.029069136455552293,0.09523809523809526,0.038582002281054455,8
+spot,part1_neumann,abs_error,nearest_distance_proxy_norm,-0.5353935071761041,-0.48571428571428577,,6
+spot,part1_neumann,abs_error,local_normal_variation,-0.36328612203374716,0.14285714285714288,nan,6
+spot,part1_neumann,abs_error,local_edge_mean_norm,0.12698333316185184,-0.2,nan,6
+spot,part1_neumann,abs_error,local_aspect_ratio,0.7114499475527873,0.7142857142857143,nan,6
+spot,part1_neumann,abs_error,local_quality,-0.6464119706121061,-0.7142857142857143,nan,6
