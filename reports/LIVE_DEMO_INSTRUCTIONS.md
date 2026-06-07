@@ -77,6 +77,21 @@ This runs:
 - one small mixed-Neumann trace
 - `scripts/plot_live_trace.py`
 - output to `results/live_trace_plot.png`
+- animated output to `results/live_trace_walks.gif`
+
+For a 3D view instead of the default x-y projection:
+
+```powershell
+.\.venv\Scripts\python.exe .\scripts\run_live_demo.py --preset neumann64 --view 3d
+```
+
+This writes:
+
+```text
+results/live_trace_plot_3d.png
+results/live_trace_walks_3d.gif
+results/live_trace_interactive_3d.html
+```
 
 Other available presets:
 
@@ -87,6 +102,14 @@ Other available presets:
 ```
 
 Use `neumann64` for the report story. Use `dirichlet16` only if you want the simplest sanity-check demonstration.
+
+The `neumann64` preset uses the Spot mesh, `cube=1.1`, and the report trace point `(0.8, 0.0, 0.2)`. The Dirichlet presets use the Bunny mesh with the smaller `cube=0.22` point `(0.05, 0.02, 0.08)`.
+
+By default, the wrapper writes both a static PNG and an animated GIF. Use `--no-gif` if you only need the static plot.
+
+Use `--view both` if you want the old 2D projection and the 3D view from the same run.
+
+The interactive HTML view can be rotated with mouse drag controls, zoomed with the wheel, and played over time with the timeline controls. It includes the outer cube boundary plus the inner OBJ mesh, so it is the clearest option for explaining why the flat projection can be misleading.
 
 ## Suggested Poster-Session Flow
 
@@ -177,10 +200,14 @@ Run the lightweight C++ trace demo:
 .\.venv\Scripts\python.exe .\scripts\run_live_demo.py --preset neumann64
 ```
 
-Open the output:
+Open the outputs:
 
 ```text
 results/live_trace_plot.png
+results/live_trace_walks.gif
+results/live_trace_plot_3d.png
+results/live_trace_walks_3d.gif
+results/live_trace_interactive_3d.html
 ```
 
 ## What Not To Do Live
