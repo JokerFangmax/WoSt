@@ -35,6 +35,7 @@
 | reports/final_assets/fig3_neumann_epsilon_sweep.png | Generated final-report figure/table asset. | Main report or poster section. |
 | reports/final_assets/fig4_boundary_bias_indicator_summary.png | Generated final-report figure/table asset. | Main report or poster section. |
 | reports/final_assets/fig5_strongest_geometry_correlations.png | Generated final-report figure/table asset. | Main report or poster section. |
+| reports/final_assets/fig5_top10_geometry_correlations.png | Generated final-report figure/table asset. | Main report or poster section. |
 | reports/final_assets/fig5b_pointwise_error_scatter.png | Generated final-report figure/table asset. | Main report or poster section. |
 | reports/final_assets/fig6_matched_bin_abs_error_ci.png | Generated final-report figure/table asset. | Main report or poster section. |
 | reports/final_assets/fig7_matched_bin_boundary_bias_ci.png | Generated final-report figure/table asset. | Main report or poster section. |
