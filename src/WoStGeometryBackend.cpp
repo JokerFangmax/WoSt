@@ -282,7 +282,7 @@ float WoStGeometryBackend::ClosestSilhouetteSIMD(
         bestIdx_v = _mm512_mask_blend_epi32(newMinMask, bestIdx_v, currIdx_v);
     }
 
-// Horizontal minimum reduction across the register lanes
+    // Horizontal minimum reduction across the register lanes
     float minD2 = _mm512_reduce_min_ps(bestD2_v);
     if (minD2 < bestD2) {
         __mmask16 minLaneMask = _mm512_cmp_ps_mask(bestD2_v, _mm512_set1_ps(minD2), _CMP_EQ_OQ);
