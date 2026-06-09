@@ -376,12 +376,21 @@ Compares `u_epsilon(x)` with `u_epsilon/2(x)`. This is an epsilon sensitivity in
 .\.venv\Scripts\python.exe .\scripts\plot_boundary_bias.py --vtk results\boundary_bias_detector.vtk --summary results\boundary_bias_summary.csv --out results\boundary_bias_detector.png
 ```
 
+The PNG is a center `z`-slice through the 3D VTK volume. For an interactive 3D point-cloud view with the inner mesh and outer cube:
+
+```powershell
+.\.venv\Scripts\python.exe .\scripts\plot_boundary_bias.py --vtk results\boundary_bias_detector.vtk --summary results\boundary_bias_summary.csv --out results\boundary_bias_detector.png --html-3d results\boundary_bias_detector_3d.html --mesh-obj obj\Bunny.obj --cube 0.22 --field bias_indicator
+```
+
+In the HTML viewer, use the threshold slider to hide low-valued points for the selected field and make high-bias regions easier to inspect.
+
 Outputs:
 
 ```text
 results/boundary_bias_detector.vtk
 results/boundary_bias_summary.csv
 results/boundary_bias_detector.png
+results/boundary_bias_detector_3d.html
 ```
 
 ### Variance-Predicted Adaptive Sampling
@@ -620,6 +629,30 @@ Open them in ParaView and color by:
 - `abs_error`
 - `is_valid`
 - `bias_indicator` when available
+
+### Interactive VTK Value Views
+
+You can also generate lightweight in-browser visualizations directly from the WoSt/Zombie ASCII VTK files. The viewer supports both `STRUCTURED_POINTS` grids and `UNSTRUCTURED_GRID` point clouds, with scalar-field selection, log color, threshold filtering, rotation/zoom, and optional Bunny/Spot mesh overlays.
+
+Generate interactive WoSt views for the cross-mesh rerun:
+
+```powershell
+.\.venv\Scripts\python.exe .\scripts\plot_vtk_values.py --root .\experiments\rerun_cross_mesh_20260606 --scope wost --out-dir .\experiments\rerun_cross_mesh_20260606\vtk_value_views --html --with-mesh --field abs_error
+```
+
+Generate Zombie baseline views instead:
+
+```powershell
+.\.venv\Scripts\python.exe .\scripts\plot_vtk_values.py --root .\experiments\rerun_cross_mesh_20260606 --scope zombie --out-dir .\experiments\rerun_cross_mesh_20260606\vtk_value_views_zombie --html --with-mesh --field abs_error
+```
+
+Or visualize a single VTK file:
+
+```powershell
+.\.venv\Scripts\python.exe .\scripts\plot_vtk_values.py --vtk .\experiments\rerun_cross_mesh_20260606\wost_bunny\results\linear_dirichlet_grid.vtk --out-dir .\results\vtk_value_views --html --with-mesh --field abs_error
+```
+
+Use the field dropdown to switch among `solution`, `abs_error`, `std_error`, `mean_steps`, `samples_used`, and any extra diagnostic fields in the VTK. The threshold slider hides low normalized values for the selected field, which is useful for finding high-error, high-variance, or high-bias regions inside the 3D domain.
 
 ## Notes on Interpretation
 

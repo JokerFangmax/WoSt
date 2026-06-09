@@ -1,0 +1,3 @@
+benchmark_name,mesh_name,num_query_points,valid_points,walks_per_point,epsilon,max_steps,num_threads,elapsed_seconds,points_per_second,walks_per_second,rmse,mae,max_abs_error,mean_std_error,mean_steps,diverged_count,mean_samples_used
+case_dirichlet,C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj,10,10,256,9.99999975e-05,512,8,0.2363713,42.3063206066,10830.4180753,0.0272299906221,0.0193041861057,0.0568436384201,0.0317758189049,26.53515625,0,256
+case_dirichlet,C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj,100000,92986,256,9.99999975e-05,512,8,297.8151205,335.778787296,79930.1793678,0.0310284837919,0.0230644003869,0.17258566618,0.0288796994433,25.8671123879,0,256

@@ -1,0 +1,1 @@
+C:\THU\projects\WoSt_Final_project-1\build\Release\wost.exe --mode case --obj C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj --queries 100000 --threads 8 --seed 54321 --cube 1.1 --boundary dirichlet --walks 256 --epsilon 0.0001

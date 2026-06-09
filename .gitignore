@@ -22,3 +22,4 @@ Thumbs.db
 # Durable report inputs should live under experiments/<run-name>/.
 /results_archive_*/
 /local_archive/
+/experiments/rerun_cross_mesh_20260606/vtk_value_views

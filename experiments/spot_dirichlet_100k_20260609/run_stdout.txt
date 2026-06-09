@@ -1,0 +1,22 @@
+WoSt linear Dirichlet benchmark
+mode: case
+obj: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+query points: 100000
+grid: 48^3
+cube half extent: 1.1
+threads: 8
+seed: 54321
+adaptive min/max/batch: 64 / 1024 / 32  target_rse: 0.05  rse_eps: 0.001
+demo boundary: dirichlet  walks: 256  epsilon: 0.0001
+[WoSt] Loaded 5856 triangles, 8784 silhouette edges.
+
+=== case_dirichlet ===
+mesh: C:\THU\projects\WoSt_Final_project-1\spot\spot_triangulated.obj
+valid points: 92986 / 100000
+walks_per_point: 256  epsilon: 0.0001  max_steps: 512
+elapsed_seconds: 297.815
+points_per_second: 335.779
+walks_per_second: 79930.2
+RMSE: 0.0310285  MAE: 0.0230644  max_abs_error: 0.172586
+mean_std_error: 0.0288797  mean_steps: 25.8671  mean_samples_used: 256
+diverged_count: 0
