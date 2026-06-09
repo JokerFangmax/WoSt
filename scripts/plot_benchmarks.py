@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate benchmark plots from results/benchmark_summary.csv."""
+"""Generate benchmark plots from CSV files in results/."""
 
 from __future__ import annotations
 
@@ -16,7 +16,8 @@ GEOMETRY_CSV_PATH = RESULTS / "geometry_benchmark.csv"
 
 def load_rows():
     if not CSV_PATH.exists():
-        raise SystemExit(f"Missing {CSV_PATH}. Run the C++ benchmarks first.")
+        print(f"Missing {CSV_PATH}; skipping solver benchmark plots.")
+        return []
 
     try:
         import pandas as pd  # type: ignore

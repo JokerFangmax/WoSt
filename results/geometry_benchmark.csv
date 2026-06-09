@@ -1,0 +1,3 @@
+benchmark_name,mesh_name,backend_name,triangle_count,num_queries,num_threads,elapsed_seconds,queries_per_second,checksum
+geometry_distance,.\obj\Bunny.obj,tiny_bvh,70580,1000,8,0.0015923,628022.357596,159.132979593
+geometry_distance,.\obj\Bunny.obj,brute_force,70580,1000,8,0.1660205,6023.35253779,159.132979593

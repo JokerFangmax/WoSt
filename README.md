@@ -328,6 +328,42 @@ results/thread_speedup.png
 results/bvh_vs_bruteforce.png
 ```
 
+### Reproduce `bvh_vs_bruteforce.png`
+
+This figure is generated from the WoSt-only geometry microbenchmark. The benchmark
+uses the same sampled query points to compare `tiny_bvh` closest-distance queries
+against brute-force triangle traversal, then writes the timing rows to
+`results/geometry_benchmark.csv`.
+
+From a clean checkout or after rebuilding the C++ driver:
+
+```powershell
+.\build_cpp.ps1
+```
+
+Run the Bunny geometry benchmark and regenerate the plots:
+
+```powershell
+New-Item -ItemType Directory -Force results | Out-Null
+Remove-Item results\geometry_benchmark.csv -ErrorAction SilentlyContinue
+Remove-Item results\bvh_vs_bruteforce.png -ErrorAction SilentlyContinue
+
+.\build\Release\wost.exe --mode geometry --obj .\obj\Bunny.obj --queries 500 --threads 8 --seed 12345 --cube 0.22
+.\.venv\Scripts\python.exe .\scripts\plot_benchmarks.py
+```
+
+Expected inputs and outputs:
+
+```text
+Input mesh:       obj/Bunny.obj
+Benchmark CSV:   results/geometry_benchmark.csv
+Generated plot:  results/bvh_vs_bruteforce.png
+Plotter source:  scripts/plot_benchmarks.py
+```
+
+For the higher-sample Bunny benchmark used in older benchmark notes, replace
+`--queries 500` with `--queries 3000`. Keep the same seed when comparing runs.
+
 ## Diagnostic and Optimization Modes
 
 These modes support the final report's diagnostic story. They should be interpreted as tools for understanding variance, runtime, and path behavior, not as general accuracy fixes.
