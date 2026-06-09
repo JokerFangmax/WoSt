@@ -1,0 +1,2 @@
+run_label,benchmark_name,mesh_name,num_query_points,valid_points,walks_per_point,epsilon,max_steps,num_threads,elapsed_seconds,rmse,mae,max_abs_error,mean_std_error,mean_steps,diverged_count,mean_samples_used
+point_list,point_list,spot\spot_triangulated.obj,4096,3876,128,0.00100000005,2048,8,9.1177695,0.200239615,0.107042018,1.19747341,0.0433606593,29.7307187,0,128
