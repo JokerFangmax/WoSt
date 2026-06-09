@@ -439,15 +439,41 @@ def plot_outputs(out_dir: Path, enriched: list[dict[str, Any]], corr_rows: list[
     if corr_rows:
         rows = [r for r in corr_rows if math.isfinite(as_float(r.get("pearson_r")))]
         if rows:
-            labels = [f"{r['mesh']}\n{r['dataset']}\n{r['feature']}->{r['target']}" for r in rows]
+            dataset_names = {
+                "neumann_pointcloud": "Neumann",
+                "bias_eps_1e-2": "Bias eps 1e-2",
+                "bias_eps_1e-3": "Bias eps 1e-3",
+                "adaptive_dirichlet": "Adaptive Dirichlet",
+            }
+            feature_names = {
+                "nearest_distance_proxy_norm": "nearest distance",
+                "local_edge_mean_norm": "local edge",
+                "local_area_norm": "local area",
+                "local_aspect_ratio": "aspect ratio",
+                "local_quality": "quality",
+                "local_normal_variation": "normal variation",
+            }
+            labels = [
+                f"{r['mesh'].capitalize()} | {dataset_names.get(r['dataset'], r['dataset'])}\n"
+                f"{feature_names.get(r['feature'], r['feature'].replace('_', ' '))} -> {r['target'].replace('_', ' ')}"
+                for r in rows
+            ]
             vals = [as_float(r["pearson_r"]) for r in rows]
             order = np.argsort(np.abs(vals))[-24:]
-            fig, ax = plt.subplots(figsize=(10, 7), constrained_layout=True)
-            ax.barh(np.arange(len(order)), [vals[i] for i in order])
-            ax.set_yticks(np.arange(len(order)), [labels[i] for i in order], fontsize=7)
+            fig, ax = plt.subplots(figsize=(10.5, 7.8))
+            ordered_vals = [vals[i] for i in order]
+            colors = ["#2563eb" if value >= 0 else "#dc2626" for value in ordered_vals]
+            ax.barh(np.arange(len(order)), ordered_vals, color=colors, height=0.72)
+            ax.set_yticks(np.arange(len(order)), [labels[i] for i in order], fontsize=8)
+            ax.tick_params(axis="y", pad=4)
             ax.axvline(0, color="black", lw=0.8)
             ax.set_xlabel("Pearson r")
             ax.set_title("Strongest geometry correlations")
+            if ordered_vals:
+                ax.set_xlim(max(-1.0, min(ordered_vals) - 0.05), min(1.0, max(ordered_vals) + 0.05))
+            ax.grid(True, axis="x", alpha=0.25)
+            ax.grid(False, axis="y")
+            fig.subplots_adjust(left=0.36, right=0.97, top=0.93, bottom=0.08)
             fig.savefig(fig_dir / "strongest_geometry_correlations.png", dpi=180)
             plt.close(fig)
 

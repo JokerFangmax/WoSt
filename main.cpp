@@ -2311,20 +2311,9 @@ void RunGeometryBenchmark(const WoStGeometryBackend& interior,
     namespace fs = std::filesystem;
     fs::create_directories("results");
 
-    const int geometryQueries = std::max(200, std::min(opts.numQueryPoints, 5000));
+    const int geometryQueries = opts.numQueryPoints;
     RunGeometryDistanceBenchmark(interior, meshName, "tiny_bvh", geometryQueries,
                                  opts.seed ^ 0xBEE5u, opts.cubeHalfExtent);
-
-    const uint64_t bruteWork = static_cast<uint64_t>(geometryQueries) *
-                               static_cast<uint64_t>(std::max(1u, interior.TriangleCount()));
-    if (bruteWork > 250000000ull) {
-        std::cout << "\nSkipping brute_force distance benchmark because "
-                  << geometryQueries << " queries * " << interior.TriangleCount()
-                  << " triangles would be too slow. Re-run with fewer --queries "
-                  << "if you need the exact brute-force data point.\n";
-        return;
-    }
-
     RunGeometryDistanceBenchmark(interior, meshName, "brute_force", geometryQueries,
                                  opts.seed ^ 0xBEE5u, opts.cubeHalfExtent);
 }

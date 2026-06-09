@@ -1,3 +1,8 @@
 benchmark_name,mesh_name,backend_name,triangle_count,num_queries,num_threads,elapsed_seconds,queries_per_second,checksum
 geometry_distance,.\obj\Bunny.obj,tiny_bvh,70580,1000,8,0.0015923,628022.357596,159.132979593
 geometry_distance,.\obj\Bunny.obj,brute_force,70580,1000,8,0.1660205,6023.35253779,159.132979593
+geometry_distance,.\obj\Bunny.obj,tiny_bvh,70580,5000,8,0.0063147,791803.252728,793.544310448
+geometry_distance,.\obj\Bunny.obj,tiny_bvh,70580,10000,8,0.0110471,905214.943288,1585.97589622
+geometry_distance,.\obj\Bunny.obj,brute_force,70580,10000,8,1.6518321,6053.8840479,1585.97589622
+geometry_distance,.\obj\Bunny.obj,tiny_bvh,70580,50000,8,0.0544698,917939.849238,7941.97902726
+geometry_distance,.\obj\Bunny.obj,brute_force,70580,50000,8,8.0086428,6243.25509935,7941.97902726

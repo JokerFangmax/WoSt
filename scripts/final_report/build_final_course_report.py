@@ -317,25 +317,104 @@ def plot_top_correlations(out_name: str) -> Path:
         selected.append({**row, "abs_r": abs(r), "r": r})
     selected = sorted(selected, key=lambda row: row["abs_r"], reverse=True)[:10]
 
+    dataset_names = {
+        "neumann_pointcloud": "Neumann",
+        "bias_eps_1e-2": "Bias eps 1e-2",
+        "bias_eps_1e-3": "Bias eps 1e-3",
+        "adaptive_dirichlet": "Adaptive Dirichlet",
+    }
+    feature_names = {
+        "nearest_distance_proxy_norm": "nearest distance",
+        "local_edge_mean_norm": "local edge",
+        "local_area_norm": "local area",
+        "local_aspect_ratio": "aspect ratio",
+        "local_quality": "quality",
+        "local_normal_variation": "normal variation",
+    }
+
     def label(row: dict[str, Any]) -> str:
-        dataset = str(row["dataset"]).replace("_pointcloud", "").replace("bias_eps_", "bias ")
-        feature = str(row["feature"]).replace("_proxy_norm", " proxy").replace("_norm", "")
+        dataset = dataset_names.get(str(row["dataset"]), str(row["dataset"]))
+        feature = feature_names.get(str(row["feature"]), str(row["feature"]).replace("_", " "))
         target = str(row["target"]).replace("_", " ")
         mesh = str(row["mesh"]).capitalize()
-        return f"{mesh}: {feature} -> {target} ({dataset})"
+        return f"{mesh} | {dataset}\n{feature} -> {target}"
 
     plt = plot_setup()
-    fig, ax = plt.subplots(figsize=(8.2, 5.2), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(8.8, 5.6))
     labels = [label(row) for row in reversed(selected)]
     values = [row["r"] for row in reversed(selected)]
-    colors = ["#3b82f6" if value >= 0 else "#ef4444" for value in values]
+    colors = ["#2563eb" if value >= 0 else "#dc2626" for value in values]
     y = np.arange(len(values))
-    ax.barh(y, values, color=colors)
+    ax.barh(y, values, color=colors, height=0.72)
     ax.set_yticks(y, labels)
+    ax.tick_params(axis="y", labelsize=8, pad=4)
     ax.set_xlabel("Pearson r")
-    ax.set_title("Top geometry correlations by absolute Pearson r")
+    ax.set_title("Top geometry correlations")
     ax.axvline(0, color="#333333", linewidth=0.8)
     ax.set_xlim(-1.0, 1.0)
+    ax.grid(True, axis="x", alpha=0.25)
+    ax.grid(False, axis="y")
+    fig.subplots_adjust(left=0.42, right=0.97, top=0.91, bottom=0.10)
+    path = ASSET_DIR / out_name
+    fig.savefig(path)
+    plt.close(fig)
+    return path
+
+
+def plot_full_correlations(out_name: str) -> Path:
+    rows = read_csv(GEOM / "geometry_correlations.csv")
+    selected = []
+    for row in rows:
+        r = f(row.get("pearson_r"))
+        if not math.isfinite(r):
+            continue
+        if row.get("dataset") == "dirichlet_pointcloud":
+            continue
+        selected.append({**row, "abs_r": abs(r), "r": r})
+    selected = sorted(selected, key=lambda row: row["abs_r"], reverse=True)[:24]
+
+    dataset_names = {
+        "neumann_pointcloud": "Neumann",
+        "bias_eps_1e-2": "Bias eps 1e-2",
+        "bias_eps_1e-3": "Bias eps 1e-3",
+        "adaptive_dirichlet": "Adaptive Dirichlet",
+    }
+    feature_names = {
+        "nearest_distance_proxy_norm": "nearest distance",
+        "local_edge_mean_norm": "local edge",
+        "local_area_norm": "local area",
+        "local_aspect_ratio": "aspect ratio",
+        "local_quality": "quality",
+        "local_normal_variation": "normal variation",
+    }
+
+    def short_label(row: dict[str, Any]) -> str:
+        mesh = str(row["mesh"]).capitalize()
+        dataset = dataset_names.get(str(row["dataset"]), str(row["dataset"]))
+        feature = feature_names.get(str(row["feature"]), str(row["feature"]).replace("_", " "))
+        target = str(row["target"]).replace("_", " ")
+        return f"{mesh} | {dataset}\n{feature} -> {target}"
+
+    plt = plot_setup()
+    fig, ax = plt.subplots(figsize=(10.5, 7.8))
+    labels = [short_label(row) for row in reversed(selected)]
+    values = [row["r"] for row in reversed(selected)]
+    colors = ["#2563eb" if value >= 0 else "#dc2626" for value in values]
+    y = np.arange(len(values))
+    ax.barh(y, values, color=colors, height=0.72)
+    ax.set_yticks(y, labels)
+    ax.tick_params(axis="y", labelsize=8, pad=4)
+    ax.set_xlabel("Pearson r")
+    ax.set_title("Strongest geometry correlations")
+    ax.axvline(0, color="#333333", linewidth=0.8)
+    finite_values = finite(values)
+    if finite_values:
+        lower = min(-0.05, min(finite_values) - 0.05)
+        upper = max(0.05, max(finite_values) + 0.05)
+        ax.set_xlim(max(-1.0, lower), min(1.0, upper))
+    ax.grid(True, axis="x", alpha=0.25)
+    ax.grid(False, axis="y")
+    fig.subplots_adjust(left=0.36, right=0.97, top=0.93, bottom=0.08)
     path = ASSET_DIR / out_name
     fig.savefig(path)
     plt.close(fig)
@@ -441,6 +520,7 @@ def generate_assets() -> dict[str, Path]:
     assets["epsilon_panel"] = plot_epsilon_panel("fig3_neumann_epsilon_sweep.png")
     assets["boundary_bias_bar"] = plot_boundary_bias_summary("fig4_boundary_bias_indicator_summary.png")
     assets["top_correlations"] = plot_top_correlations("fig5_top10_geometry_correlations.png")
+    assets["correlations"] = plot_full_correlations("fig5_strongest_geometry_correlations.png")
     opt_summary = optimization_diagnostic_summary()
     write_csv(ASSET_DIR / "optimization_diagnostic_summary.csv", opt_summary)
     assets["antithetic_variance"] = plot_antithetic_variance("fig13_antithetic_variance_diagnostic.png")
@@ -463,7 +543,6 @@ def generate_assets() -> dict[str, Path]:
     )
 
     copy_specs = {
-        "correlations": (GEOM / "figures" / "strongest_geometry_correlations.png", "fig5_strongest_geometry_correlations.png"),
         "pointwise_error": (GEOM / "figures" / "neumann_pointcloud_abs_error_scatter.png", "fig5b_pointwise_error_scatter.png"),
         "bunny_heatmap": (CONTROLLED / "epsilon_distance_heatmaps" / "bunny_epsilon_vs_distance_rmse.png", "fig9a_bunny_epsilon_distance_rmse.png"),
         "spot_heatmap": (CONTROLLED / "epsilon_distance_heatmaps" / "spot_epsilon_vs_distance_rmse.png", "fig9b_spot_epsilon_distance_rmse.png"),
